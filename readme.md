@@ -251,15 +251,150 @@ urlpatterns = [
 ]
 ```
 
-### 配置axios
+### 配置axios（此处出现bug，详见bug2）
 
 ```js
+// forntend/src/api.js
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: 'http://localhost:8000/api/users/',
+  headers: { 'Content-Type': 'application/json' }
+});
+
+// 拦截器：添加token(很关键，没有这个后端无法收到token验证，即会报权限错误)！！！
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// 还需一个响应拦截器处理token过期
+
+export default api;
+```
+
+### 创建组件配置路由
+
+```js
+import {createRouter, createWebHistory} from 'vue-router'
+import Register from '@/components/Register.vue';
+import Login from '@/components/Login.vue';
+import Profile from '@/components/Profile.vue';
+
+const routes = [
+    {path: '/', redirect: '/login'},
+    {path: '/register', component: Register},
+    {path: '/login', component: Login},
+    {path: '/profile', component: Profile},
+];
+
+const router = createRouter({
+    history: createWebHistory(),
+    routes
+});
+
+export default router;
 
 ```
 
 
 
 
+
+**<u>！！！记住完成后需要在前端根目录的App.vue组件中集成路由！！！</u>**
+
+
+
+**添加token拦截器以及刷新token拦截器**
+
+```js
+// 拦截器：添加token
+api.interceptors.request.use(config => {
+    const token = localStorage.getItem('access_token');  // access_token是Django返回的
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+// 响应拦截器：处理token过期
+api.interceptors.response.use(
+    response => response,
+    async error => {
+        const originalRequest = error.config;
+
+        if (error.response.status === 401) {
+            if (!originalRequest._retry) {
+                originalRequest._retry = true;  // 防止重复刷新,无限循环
+
+                if (isRefreshing) {
+                    // 如果正在刷新token，等待刷新完成
+                    return new Promise((resolve, reject) => {
+                        failedQueue.push({resolve, reject});
+                    }).then(token => {
+                        originalRequest.headers.Authorization = `Bearer ${token}`;
+                        return api(originalRequest);
+                    }).catch(err => {
+                        // 等待过程中发生错误，清理token并跳转
+                        localStorage.removeItem('access_token');
+                        localStorage.removeItem('refresh_token');
+                        window.location.href = '/login';
+                        return Promise.reject(err);
+                    })
+                }
+
+                // 状态修改为刷新中
+                isRefreshing = true;
+
+                const refresh_token = localStorage.getItem('refresh_token');
+
+                if (!refresh_token) {
+                    // 没有refresh_token，直接踢登录
+                    localStorage.removeItem('access_token');
+                    window.location.href = '/login';
+                    return Promise.reject(error);
+                }
+
+                try {
+                    const response = await axios.post(
+                        'http://localhost:8000/api/token/refresh/', {
+                            refresh: refresh_token
+                        });
+
+                    const newAccessToken = response.data.access;
+                    localStorage.setItem('access_token', newAccessToken);
+
+                    processQueue(null, newAccessToken);  // 更新队列中的所有请求
+
+                    originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;  // 重新发送请求，使用新的token
+
+                    return api(originalRequest);
+                } catch (refreshError) {
+                    // 刷新失败，清除token，大概率是refresh_token也过期了
+                    processQueue(refreshError, null)
+                    localStorage.removeItem('access_token')
+                    localStorage.removeItem('refresh_token')
+
+                    // 提示用户并跳转
+                    if (typeof window !== 'undefined' && typeof alert !== 'undefined') {
+                        alert('登录已过期，请重新登录');
+                    }
+
+                    window.location.href = '/login';
+                    return Promise.reject(refreshError);
+                } finally {
+                    isRefreshing = false;
+                }
+            }
+        }
+
+        return Promise.reject(error);
+    }
+)
+```
 
 
 
@@ -463,7 +598,30 @@ git branch -M main
 git push -u origin main
 ```
 
+```
+# 1. 如果这个文件夹从来没用过 git，先初始化
+git init
 
+# 2. 添加所有文件到暂存区（. 代表全部文件）
+git add .
+
+# 3. 第一次提交（必须写提交信息）
+git commit -m "初次提交：毕业设计完整项目结构（Django + Vue3）"
+
+# 4. 连接到你刚刚创建的 GitHub 远程仓库
+# 把下面这行里的 URL 换成你自己仓库的地址（HTTPS 或 SSH 都可以）
+git remote add origin https://github.com/iktalk2004/interview_system.git
+
+# 5. 把本地 main 分支推送到远程（-u 只需第一次用，以后可以直接 git push）
+git branch -M main          # 确保当前分支叫 main（GitHub 默认）
+git push -u origin main(推荐)
+
+
+# 修改代码 → 暂存 → 提交 → 推送
+git add .
+git commit -m "完成了用户管理模块"
+git push
+```
 
 
 

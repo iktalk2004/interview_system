@@ -31,10 +31,10 @@ const register = async () => {
   error.value = '';
 
   try {
-    await api.post('register/', {...form});
+    await api.post('users/register/', {...form});
     alert('注册成功,请登录')
     router.push('/login');
-  } catch (error) {
+  } catch (err) {
     error.value = err.response?.data?.detail || '注册失败，请稍后再试'
   } finally {
     loading.value = false;

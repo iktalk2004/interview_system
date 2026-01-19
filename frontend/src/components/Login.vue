@@ -12,10 +12,11 @@
 
 <script setup>
 import {reactive, ref} from 'vue'
-import {useRouter} from 'vue-router'
+import {useRouter, useRoute} from 'vue-router'
 import api from '@/api.js'
 
 const router = useRouter();
+const route = useRoute();  // 获取当前路由
 const form = reactive({
   username: '',
   password: '',
@@ -29,13 +30,14 @@ const login = async () => {
   error.value = '';
 
   try {
-    const response = await api.post('login/', {...form})
+    const response = await api.post('users/login/', {...form})
 
     localStorage.setItem('access_token', response.data.access);
     localStorage.setItem('refresh_token', response.data.refresh);
 
     alert('登录成功')
-    router.push('/profile')
+    const redirectPath = route.query.redirect || '/profile';  // 跳转到登录前的页面路径或默认首页
+    router.push(redirectPath)
   } catch (err) {
     error.value = err.response?.data?.detail || '登录失败，请检查用户名和密码'
   } finally {

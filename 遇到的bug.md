@@ -52,3 +52,120 @@ class User(AbstractUser):
     )
 ```
 
+
+
+2、Given token not valid for any token type，Login.vue:32   POST http://localhost:8000/api/users/login/ 401 (Unauthorized)。
+
+报错原因：
+
+token过期，前端没有设置token刷新机制，localStorage中可能存在无效token。
+
+解决办法：
+
+```js
+// 在api.js中添加token刷新拦截器，处理token过期的问题
+
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+    failedQueue.forEach(prom => {
+        if (error) {
+            prom.reject(error);
+        } else {
+            prom.resolve(token);
+        }
+    });
+    failedQueue = [];
+};
+
+// 响应拦截器：处理token过期
+api.interceptors.response.use(
+    response => response,
+    async error => {
+        const originalRequest = error.config;
+
+        if (error.response.status === 401 && !originalRequest._retry) {
+            if (!isRefreshing) {
+                return new Promise((resolve, reject) => {
+                    failedQueue.push({resolve, reject});
+                }).then(token => {
+                    originalRequest.headers.Authorization = `Bearer ${token}`;
+                    return api(originalRequest);
+                }).catch(err => {
+                    return Promise.reject(err);
+                })
+            }
+            originalRequest._retry = true;
+            isRefreshing = true;
+
+            const refresh_token = localStorage.getItem('refresh_token');
+
+            if (!refresh_token) {
+                localStorage.removeItem('access_token');
+                window.location.href = '/login';
+                return Promise.reject(error);
+            }
+
+            try {
+                const response = await axios.post('http://localhost:8000/api/token/refresh/', {
+                    refresh: refresh_token
+                });
+
+                const newAccessToken = response.data.access;
+                localStorage.setItem('access_token', newAccessToken);
+
+                originalRequest.headers.Authorization = 'Bearer ${newAccessToken}';
+
+                processQueue(null, newAccessToken);
+
+                return api(originalRequest);
+            } catch (refreshError) {
+                localStorage.removeItem('access_token')
+                localStorage.removeItem('refresh_token')
+                window.location.href = '/login';
+                processQueue(refreshError, null)
+                return Promise.reject(refreshError);
+            } finally {
+                isRefreshing = false;
+            }
+        }
+
+        return Promise.reject(error);
+    }
+)
+```
+
+```python
+# 同时后端添加处理tokenRefresh的ViewApi
+from rest_framework_simplejwt.views import TokenRefreshView
+path("api/token/refresh", TokenRefreshView.as_view(), name="token_refresh")
+
+```
+
+3、未登录用户访问profile页面，报错401 (Unauthorized)。
+
+报错原因：未登录用户访问profile的request没有携带token。
+
+解决办法：在**前端路由设置**中添加**路由守卫**保护需要登陆的页面，同时在fetchprofile**优化401error的处理**。
+
+```js
+{path: '/profile', component: Profile, meta: {requiresAuth: true}}
+
+// 全局前置守卫
+router.beforeEach((to, from, next) => {
+    const isAuthenticated = !!localStorage.getItem('access_token');
+
+    if (to.meta.requiresAuth && !isAuthenticated) {
+        // 跳转到登录页面, 并带上当前页面的路径，以便登录后返回
+        next({
+            path: '/login',
+            query: {redirect: to.fullPath}
+        });
+    } else {
+        // 如果已登录有token，正常放行
+        next();
+    }
+});
+```
+

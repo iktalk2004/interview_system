@@ -58,13 +58,26 @@ const error = ref('')
 // 获取用户信息
 const fetchProfile = async () => {
   try {
-    const response = await api.get('profile/')
+    const response = await api.get('users/profile/')
     Object.assign(user, response.data)
     form.bio = response.data.bio || ''
     form.preferences = JSON.stringify(response.data.preferences || {}, null, 2)
   } catch (err) {
-    error.value = '获取个人信息失败，请重新登录'
-    router.push('/login')
+    console.error('获取用户信息失败：', err)
+
+    if (err.response?.status === 401) {
+      err.value = '登录已过期，请重新登录'
+
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+
+      // 延迟跳转，让用户看到错误提示
+      setTimeout(() => {
+        router.push('/login');
+      }, 1500);
+    } else {
+      error.value = '获取用户信息失败，请稍后重试'
+    }
   } finally {
     loading.value = false
   }
@@ -83,7 +96,7 @@ const updateProfile = async () => {
       throw new Error('偏好格式错误，请输入有效的JSON')
     }
 
-    await api.put('profile/', {
+    await api.put('users/profile/', {
       bio: form.bio,
       preferences: preferencesData
     })
@@ -102,7 +115,7 @@ const logout = async () => {
   loggingOut.value = true
 
   try {
-    await api.post('logout/')
+    await api.post('users/logout/')
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     router.push('/login')
@@ -118,6 +131,7 @@ const logout = async () => {
 
 // 组件挂载时获取信息
 onMounted(() => {
+  // 此处可添加处理路由守卫漏掉的极端情况，避免卡死界面
   fetchProfile()
 })
 </script>
