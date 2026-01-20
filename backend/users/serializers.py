@@ -2,19 +2,23 @@ from rest_framework import serializers
 from .models import User
 from django.contrib.auth import authenticate
 
+
 class UserSerializer(serializers.ModelSerializer):
     """
     用户序列化器
     """
+
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'preferences']
+        fields = ['id', 'username', 'email', 'password', 'bio', 'preferences']
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     """
     用户注册序列化器
     """
     password = serializers.CharField(write_only=True)  # 密码字段只允许写入
+
     class Meta:
         model = User
         fields = ['username', 'email', 'password']
@@ -29,6 +33,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
         )
         return user
+
 
 class LoginSerializer(serializers.Serializer):
     """
@@ -47,15 +52,3 @@ class LoginSerializer(serializers.Serializer):
         if user and user.is_active:
             return user
         raise serializers.ValidationError('用户名或密码错误,')
-
-
-
-
-
-
-
-
-
-
-
-

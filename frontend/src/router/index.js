@@ -15,6 +15,7 @@ const router = createRouter({
     routes
 });
 
+// 全局前置守卫
 router.beforeEach((to, from, next) => {
     const isAuthenticated = !!localStorage.getItem('access_token');
 
