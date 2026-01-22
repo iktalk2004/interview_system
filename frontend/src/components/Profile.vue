@@ -21,12 +21,13 @@
       <div class="form-group">
         <label>技术偏好</label>
         <div class="current-preferences">
-          <div v-for="([group, subs], index) in Object.entries(selectedPreferences)" :key="group"
-               v-if="Array.isArray(subs) && subs.length > 0">
-            <span class="tag-group">{{ group }}：</span>
-            <span v-for="sub in subs" :key="sub" class="tag-item">{{ sub }}</span>
+          <div v-if="selectedPreferences && Object.keys(selectedPreferences).length > 0">
+            <div v-for="[group, subs] in Object.entries(selectedPreferences)" :key="group">
+              <span class="tag-group">{{ group }}：</span>
+              <span v-for="sub in subs" :key="sub" class="tag-item">{{ sub }}</span>
+            </div>
           </div>
-          <span v-if="!Object.keys(selectedPreferences).length" class="no-tags">暂无技术偏好</span>
+          <span v-else class="no-tags">暂无技术偏好</span>
         </div>
 
         <!-- 编辑技术偏好按钮 -->
@@ -137,15 +138,12 @@ const error = ref('')
 const fetchProfile = async () => {
   try {
     const response = await api.get('users/profile/')
-    console.log('response.data:', response.data);
     Object.assign(user, response.data)
     form.bio = response.data.bio || ''
     // 解析现有的偏好设置，更新选中的复选框
     const existingPrefs = response.data.preferences || {};
-    console.log('existingPrefs:', existingPrefs);
-    selectedPreferences.value = existingPrefs;
-    console.log('selectedPreferences:', selectedPreferences.value);
-    form.preferences = JSON.stringify(existingPrefs);
+    selectedPreferences.value = {...existingPrefs};
+    form.preferences = JSON.stringify(selectedPreferences.value);
   } catch (err) {
     console.error('获取用户信息失败：', err)
 
