@@ -253,82 +253,147 @@ defineExpose({
 </script>
 
 <style scoped>
+/* 现代极简设计：sans-serif字体、充足空白、平坦无阴影、细边框 */
+/* 蓝色调：主蓝 #409EFF，浅蓝 #E6F7FF，深灰文本 #303133 */
+
 .profile-container {
   max-width: 500px;
-  margin: 40px auto;
-  padding: 30px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  margin: 100px auto 0; /* 增加顶部margin，创建垂直居中感 */
+  padding: 40px;
+  background-color: #FFFFFF; /* 白背景 */
+  border: 1px solid #DCDFE6; /* 浅灰细边框 */
+  border-radius: 4px; /* 小圆角 */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; /* 现代字体 */
+  text-align: left; /* 左对齐 */
+}
+
+h2 {
+  font-size: 24px;
+  font-weight: normal; /* 非粗体，极简 */
+  color: #303133; /* 深灰标题 */
+  margin-bottom: 32px; /* 增加间距 */
+  text-align: center; /* 标题居中 */
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px; /* 增加间距 */
 }
 
 .form-group label {
   display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: #606266; /* 常规文本色 */
 }
 
-textarea, input {
+input,
+textarea {
   width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
+  padding: 12px 16px;
+  border: 1px solid #DCDFE6; /* 浅灰边框 */
   border-radius: 4px;
+  font-size: 14px;
+  color: #606266;
+  background-color: #F2F6FC; /* 浅蓝灰背景 */
+  transition: border-color 0.3s ease;
+}
+
+input:disabled {
+  background-color: #F5F7FA; /* 禁用灰背景 */
+  color: #909399; /* 次要文本 */
+}
+
+input:focus,
+textarea:focus {
+  border-color: #409EFF; /* 焦点蓝边框 */
+  outline: none;
+}
+
+textarea {
+  min-height: 80px;
+  resize: vertical;
 }
 
 .current-preferences {
-  min-height: 30px;
-  padding: 8px;
-  border: 1px solid #ccc;
+  min-height: 40px;
+  padding: 12px;
+  border: 1px solid #DCDFE6;
   border-radius: 4px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  background-color: #F2F6FC; /* 浅蓝灰背景 */
+}
+
+.tag-group {
+  font-weight: normal;
+  color: #909399; /* 次要灰 */
 }
 
 .tag-item {
-  background: #3498db;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
+  background-color: #409EFF; /* 蓝标签 */
+  color: #FFFFFF;
+  padding: 4px 12px;
+  border-radius: 16px;
   font-size: 12px;
+  margin-right: 8px;
 }
 
 .no-tags {
-  color: #999;
-  font-style: italic;
+  color: #909399;
+  font-size: 14px;
+  font-style: normal;
 }
 
 .edit-preferences-btn {
-  background: #9b59b6;
-  color: white;
+  width: 100%;
+  padding: 12px;
+  background-color: #409EFF; /* 主蓝按钮 */
+  color: #FFFFFF;
   border: none;
-  padding: 8px 12px;
   border-radius: 4px;
+  font-size: 14px;
   cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.edit-preferences-btn:hover {
+  background-color: #66B1FF; /* 浅蓝hover */
 }
 
 .logout-btn {
-  margin-top: 30px;
-  background: #e74c3c;
-  color: white;
   width: 100%;
+  padding: 12px;
+  background-color: #F56C6C; /* 红注销按钮，保持区分 */
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 32px;
+  transition: background-color 0.3s ease;
+}
+
+.logout-btn:hover {
+  background-color: #F78989; /* 浅红hover */
 }
 
 .success {
-  color: #27ae60;
-  margin-top: 10px;
+  color: #67C23A; /* 绿成功 */
+  font-size: 12px;
+  margin-top: 12px;
+  text-align: center;
 }
 
 .error {
-  color: #e74c3c;
-  margin-top: 10px;
+  color: #F56C6C; /* 红错误 */
+  font-size: 12px;
+  margin-top: 12px;
+  text-align: center;
 }
 
-/* 弹窗样式 */
+/* 弹窗样式 - 极简版 */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -343,120 +408,122 @@ textarea, input {
 }
 
 .modal-content {
-  background: #fff;
+  background: #FFFFFF;
   width: 500px;
   max-width: 90vw;
-  border-radius: 12px;
+  border-radius: 4px; /* 小圆角 */
   overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-  border: 1px solid #e0e0e0;
+  box-shadow: none; /* 无阴影，极简 */
+  border: 1px solid #DCDFE6; /* 细边框 */
 }
 
 .modal-content h3 {
   margin: 0;
   padding: 16px 24px;
-  background: linear-gradient(135deg, #2c3e50, #3498db);
-  color: white;
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
+  background-color: #409EFF; /* 蓝头部 */
+  color: #FFFFFF;
+  font-size: 18px;
+  font-weight: normal;
 }
 
 .modal-body {
   padding: 20px;
   max-height: 400px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #bbb #f1f1f1;
 }
 
 .modal-body::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .modal-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
+  background: #F2F6FC;
 }
 
 .modal-body::-webkit-scrollbar-thumb {
-  background: #bbb;
-  border-radius: 10px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-  background: #999;
+  background: #DCDFE6;
 }
 
 .checkbox-item {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 8px 0;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
 .checkbox-item:hover {
-  background-color: #eaf2f8;
+  background-color: #E6F7FF; /* 浅蓝hover */
 }
 
 .checkbox-item input[type="checkbox"] {
   margin-right: 12px;
-  accent-color: #3498db;
+  accent-color: #409EFF; /* 蓝checkbox */
 }
 
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid #DCDFE6;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: #fafafa;
+  background: #F2F6FC; /* 浅蓝灰背景 */
 }
 
 .preference-group {
   margin-bottom: 20px;
-  padding: 15px;
-  background: #f9f9f9;
-  border-radius: 8px;
-  border-left: 4px solid #3498db;
+  padding: 0;
+  border: none; /* 移除边框，极简 */
 }
 
 .preference-group h4 {
   margin-top: 0;
-  color: #2c3e50;
-  font-weight: 600;
+  color: #303133;
+  font-weight: normal;
   margin-bottom: 12px;
+  font-size: 16px;
 }
 
 .save-btn {
-  background: #2ecc71;
-  color: white;
-  border: none;
   padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
+  background-color: #409EFF; /* 主蓝 */
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.3s ease;
 }
 
 .save-btn:hover {
-  background: #27ae60;
+  background-color: #66B1FF;
 }
 
 .cancel-btn {
-  background: #95a5a6;
-  color: white;
-  border: none;
   padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 600;
+  background-color: #909399; /* 灰取消 */
+  color: #FFFFFF;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.3s ease;
 }
 
 .cancel-btn:hover {
-  background: #7f8c8d;
+  background-color: #A0A0A0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .profile-container {
+    margin: 60px auto 0;
+    padding: 30px;
+  }
+
+  .modal-content {
+    width: 100%;
+    max-width: none;
+  }
 }
 </style>
