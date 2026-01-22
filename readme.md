@@ -398,6 +398,29 @@ api.interceptors.response.use(
 
 
 
+## 用户信息
+
+### 二级标签处理
+
+**Python** (一级)
+
+- Python基础 (二级)
+- Python进阶 (二级)
+- Flask专题 (二级)
+- Django专题 (二级)
+
+存储为简单的JSON {tags: ['Python', 'Java']}，这不利于处理二级标签，也不便于后续推荐引擎（协同过滤）模块的开发。推荐引擎便利性：协同过滤通常基于用户偏好匹配相似用户/题目。使用嵌套结构（如{"Python": ["Python基础", "Python进阶"]}），你可以：
+
+- 计算用户在二级标签上的相似度（e.g., Jaccard相似度或向量嵌入）。
+- 过滤题目：直接用用户选的二级标签查询题库（e.g., WHERE category LIKE 'Python-Python基础'）。
+- 扩展性好：未来题库加新一级（如'Java'），前端/后端无缝支持。
+
+故将json对象修改为嵌套checkbox结构
+
+```python
+
+```
+
 
 
 

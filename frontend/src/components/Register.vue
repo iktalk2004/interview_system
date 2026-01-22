@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import {reactive} from 'vue';
+import {reactive, ref} from 'vue';
 import {useRouter} from 'vue-router'
 import api from '@/api.js'
 

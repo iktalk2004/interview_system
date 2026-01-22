@@ -7,6 +7,10 @@
       <button type="submit" :disabled="loading">登录</button>
       <p v-if="error" class="error">{{ error }}</p>
     </form>
+    <p class="register-link">
+      没有账号？
+      <router-link to="/register">去注册</router-link>
+    </p>
   </div>
 </template>
 
@@ -58,5 +62,20 @@ const login = async () => {
 .error {
   color: #e74c3c;
   margin-top: 10px;
+}
+
+.register-link {
+  margin-top: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.register-link a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
 }
 </style>
