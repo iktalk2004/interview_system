@@ -417,17 +417,84 @@ api.interceptors.response.use(
 
 故将json对象修改为嵌套checkbox结构
 
-```python
+```vue
+<label>技术偏好</label>
+        <div class="current-preferences">
+          <div v-if="selectedPreferences && Object.keys(selectedPreferences).length > 0">
+            <div v-for="[group, subs] in Object.entries(selectedPreferences)" :key="group">
+              <span class="tag-group">{{ group }}：</span>
+              <span v-for="sub in subs" :key="sub" class="tag-item">{{ sub }}</span>
+            </div>
+          </div>
+          <span v-else class="no-tags">暂无技术偏好</span>
+        </div>
+```
 
+```js
+const selectedPreferences = ref({});
+const tempSelectedPreferences = ref({}); // 临时存储弹窗中的选择
+const showPreferenceModal = ref(false);
+
+// 解析现有的偏好设置，更新选中的复选框
+const existingPrefs = response.data.preferences || {};
+selectedPreferences.value = {...existingPrefs};
+form.preferences = JSON.stringify(selectedPreferences.value);
 ```
 
 
 
+# 题目管理模块
+
+### 添加题目
+
+#### 创建题目模型
+
+```python
+class Category(models.Model):
+    name = models.CharField(max_length=100)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
 
 
+class Question(models.Model):
+    title = models.CharField(max_length=200)
+    answer = models.TextField(blank=True)
+    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True)
+    creator = models.ForeignKey(User, on_delete=models.CASCADE, null=True)
+    difficult = models.IntegerField(default=1)  # 1-3 对应 易 中 难
+    is_approved = models.BooleanField(default=False)
+    explanation = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+```
+
+创建视图
+
+```python
+from rest_framework import viewsets, permissions, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from .models import Category, Question
+from .serializers import CategorySerializer, QuestionSerializer
 
 
+class CategoryViewSet(viewsets.ModelViewSet):
+    queryset = Category.objects.all()
+    serializer_class = CategorySerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]  # 读公开，写需登录
 
+
+class QuestionViewSet(viewsets.ModelViewSet):
+    queryset = Question.objects.all()
+    serializer_class = QuestionSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['category', 'is_approved', 'difficult']
+    search_fields = ['title', 'answer']  # 内部搜索字段
+    ordering_fields = ['created_at', 'difficulty']
+
+    def perform_create(self, serializer):
+        # 创建时添加创建者
+        serializer.save(creator=self.request.user)
+
+```
 
 
 
