@@ -16,8 +16,9 @@ class QuestionSerializer(serializers.ModelSerializer):
     """
         题目序列化器
     """
+    category = CategorySerializer(read_only=True)
 
     class Meta:
         model = Question
-        fields = ['id', 'title', 'answer', 'category', 'creator', 'difficult', 'is_approved', 'created_at',
+        fields = ['id', 'title', 'answer', 'category', 'creator', 'difficulty', 'is_approved', 'created_at',
                   'explanation']

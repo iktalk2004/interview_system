@@ -15,7 +15,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
     serializer_class = QuestionSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category', 'is_approved', 'difficult']
+    filterset_fields = ['category', 'is_approved', 'difficulty']
     search_fields = ['title', 'answer']  # 内部搜索字段
     ordering_fields = ['created_at', 'difficulty']
 

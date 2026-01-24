@@ -2,12 +2,16 @@ import {createRouter, createWebHistory} from 'vue-router'
 import Register from '@/components/Register.vue';
 import Login from '@/components/Login.vue';
 import Profile from '@/components/Profile.vue';
+import QuestionsList from '@/components/QuestionsList.vue'
+import CategoryManager from '@/components/CategoryManager.vue'
 
 const routes = [
     {path: '/', redirect: '/profile'},
     {path: '/register', component: Register},
     {path: '/login', component: Login},
     {path: '/profile', component: Profile, meta: {requiresAuth: true}},
+    {path: '/questions', component: QuestionsList, meta: {requiresAuth: true}},
+    {path: '/categories', component: CategoryManager, meta: {requiresAuth: true}},
 ];
 
 const router = createRouter({
