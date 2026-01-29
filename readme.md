@@ -498,6 +498,42 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
 
 
+### 过滤后端配置
+
+```python
+filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]  # 过滤、搜索、排序
+filterset_fields = ['category', 'is_approved', 'difficulty']  # 过滤字段
+```
+
+**filter_backends** 用于指定该视图支持哪些过滤后端，本质上是一个过滤器类的列表。
+
+**DjangoFilterBackend** 提供精确字段过滤功能，允许通过 URL 参数进行复杂查询。通过 **filterset_fields** 属性指定可过滤的字段。
+
+**filters.SearchFilter** 提供全文搜索功能，可以在指定字段中搜索关键词。通过 **search_fields** 属性指定搜索的字段。
+
+**filters.OrderingFilter** 提供排序功能，允许按照指定字段进行升序/降序排列。通过 **ordering_fields** 属性指定可排序的字段。
+
+
+
+这意味着 API 支持以下类型的请求：
+
+```cmd
+过滤：/api/questions/?category=1&difficulty=2
+搜索：/api/questions/?search=python
+排序：/api/questions/?ordering=-created_at
+组合使用：/api/questions/?category=1&search=python&ordering=-created_at
+```
+
+这种设计提供了非常灵活的数据检索方式，允许前端根据需要构建复杂的查询条件。
+
+
+
+
+
+
+
+# 答题练习模块
+
 
 
 

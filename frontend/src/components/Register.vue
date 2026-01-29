@@ -2,9 +2,9 @@
   <div class="auth-container">
     <h2>注册</h2>
     <form @submit.prevent="register">
-      <input v-model="form.username" placeholder="用户名" required/>
-      <input v-model="form.email" type="email" placeholder="邮箱" required/>
-      <input v-model="form.password" type="password" placeholder="密码" required/>
+      <input v-model="form.username" placeholder="用户名" required autocomplete="new-username"/>
+      <input v-model="form.email" type="email" placeholder="邮箱" required autocomplete="new-email"/>
+      <input v-model="form.password" type="password" placeholder="密码" required autocomplete="new-password"/>
       <button type="submit" :disabled="loading">注册</button>
       <p v-if="error" class="error">{{ error }}</p>
     </form>

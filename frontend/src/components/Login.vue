@@ -2,8 +2,8 @@
   <div class="auth-container">
     <h2>登录</h2>
     <form @submit.prevent="login">
-      <input v-model="form.username" placeholder="用户名" required/>
-      <input v-model="form.password" type="password" placeholder="密码" required/>
+      <input v-model="form.username" placeholder="用户名" required autocomplete="current-username"/>
+      <input v-model="form.password" type="password" placeholder="密码" required autocomplete="current-password"/>
       <button type="submit" :disabled="loading">登录</button>
       <p v-if="error" class="error">{{ error }}</p>
     </form>
