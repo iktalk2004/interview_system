@@ -3,23 +3,23 @@
     <h2>答题练习</h2>
 
     <!-- 题目过滤和搜索 -->
-    <el-form inline class="filter-form">
-      <el-form-item label="搜索标题">
-        <el-input v-model="filters.search" placeholder="关键词" clearable @clear="fetchQuestions"/>
+    <el-form :model="filters" inline class="filter-form">
+      <el-form-item label="搜索">
+        <el-input v-model="filters.search" placeholder="标题" clearable @clear="fetchQuestions"/>
       </el-form-item>
-      <el-form-item label="分类">
-        <el-select v-model="filters.category" placeholder="选择分类" clearable @change="fetchQuestions">
-          <el-option
-              v-for="cat in filteredCategories"
-              :key="cat.id"
-              :label="cat.name"
-              :value="cat.id"
-          />
+      <el-form-item label="分类" prop="category">
+        <el-select v-model="filters.category" placeholder="选择分类" clearable style="width: 180px;">
+          <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id"/>
         </el-select>
       </el-form-item>
-      <el-form-item label="难度">
-        <el-select v-model="filters.difficulty" placeholder="难度" clearable @change="fetchQuestions">
-          <el-option v-for="i in [1,2,3]" :key="i" :label="difficultyLabels[i-1]" :value="i"/>
+      <el-form-item label="难度" prop="difficulty">
+        <el-select v-model="filters.difficulty" placeholder="难度" clearable style="width: 180px;">
+          <el-option
+              v-for="(value, key) in difficultyMap"
+              :key="key"
+              :label="value"
+              :value="key"
+          />
         </el-select>
       </el-form-item>
       <el-button type="primary" @click="fetchQuestions">查询</el-button>
@@ -28,9 +28,9 @@
     <!-- 题目列表表格 -->
     <el-table :data="questions" v-loading="loading" stripe>
       <el-table-column prop="title" label="标题" width="300"/>
-      <el-table-column prop="difficulty" label="难度" width="100">
+      <el-table-column label="难度">
         <template #default="{ row }">
-          {{ difficultyLabels[row.difficulty - 1] }}
+          {{ difficultyMap[row.difficulty] || '未知' }}
         </template>
       </el-table-column>
       <el-table-column prop="category.name" label="分类" width="150"/>
@@ -43,38 +43,43 @@
       </el-table-column>
       <el-table-column label="操作" width="100">
         <template #default="{ row }">
-          <el-button size="small" type="primary" @click="goToPractice(row.id)">练习</el-button>
+          <el-button size="small" type="primary" @click="goToPractice(row.id, null)">练习</el-button>
         </template>
       </el-table-column>
     </el-table>
 
     <!-- 分页 -->
-    <el-pagination v-if="total > 0" layout="prev, pager, next, total" :total="total" :page-size="pageSize"
-                   :current-page="currentPage" @current-change="handlePageChange" class="pagination"/>
+    <el-pagination
+        background v-if="total > 0"
+        layout="prev, pager, next, total" :total="total"
+        :page-size="pageSize"
+        :current-page="currentPage"
+        @current-change="handlePageChange"
+        class="pagination"/>
 
-    <!-- 历史记录抽屉 -->
-    <el-drawer v-model="showHistory" title="答题历史记录" direction="rtl" size="50%">
-      <el-table :data="history" v-loading="loadingHistory">
-        <el-table-column prop="question.title" label="题目"/>
-        <el-table-column prop="score" label="评分"/>
-        <el-table-column prop="time_spent" label="时长 (秒)"/>
-        <el-table-column prop="created_at" label="时间" :formatter="formatDate"/>
-        <el-table-column label="操作">
-          <template #default="{ row }">
-            <el-button
-                size="small"
-                @click="goToPractice(row.question?.id, row.id)"
-                :disabled="!row.question?.id"
-            >
-              详情
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-    </el-drawer>
+    <!--    &lt;!&ndash; 历史记录抽屉 &ndash;&gt;-->
+    <!--    <el-drawer v-model="showHistory" title="答题历史记录" direction="rtl" size="50%">-->
+    <!--      <el-table :data="history" v-loading="loadingHistory">-->
+    <!--        <el-table-column prop="question.title" label="题目"/>-->
+    <!--        <el-table-column prop="score" label="评分"/>-->
+    <!--        <el-table-column prop="time_spent" label="时长 (秒)"/>-->
+    <!--        <el-table-column prop="created_at" label="时间" :formatter="formatDate"/>-->
+    <!--        <el-table-column label="操作">-->
+    <!--          <template #default="{ row }">-->
+    <!--            <el-button-->
+    <!--                size="small"-->
+    <!--                @click="goToPractice(row.question?.id, row.id)"-->
+    <!--                :disabled="!row.question?.id"-->
+    <!--            >-->
+    <!--              详情-->
+    <!--            </el-button>-->
+    <!--          </template>-->
+    <!--        </el-table-column>-->
+    <!--      </el-table>-->
+    <!--    </el-drawer>-->
 
-    <!-- 底部按钮：查看历史 -->
-    <el-button type="info" class="history-btn" @click="showHistory = true">查看历史记录</el-button>
+    <!--    &lt;!&ndash; 底部按钮：查看历史 &ndash;&gt;-->
+    <!--    <el-button type="info" class="history-btn" @click="showHistory = true">查看历史记录</el-button>-->
   </div>
 </template>
 
@@ -86,8 +91,6 @@ import {ElMessage} from 'element-plus'
 
 const router = useRouter()
 
-// 难度标签映射
-const difficultyLabels = ['易', '中', '难']
 
 // 题目列表相关
 const questions = ref([])
@@ -96,11 +99,16 @@ const loading = ref(false)
 const total = ref(0)  // 题目总数
 const pageSize = 10
 const currentPage = ref(1)
-const filters = reactive({  // 题目过滤参数
+
+// 题目过滤参数
+const filters = reactive({
   search: '',
   category: null,
   difficulty: null
 })
+
+// 难度标签映射
+const difficultyMap = {1: '易', 2: '中', 3: '难',}
 
 // 历史记录相关
 const showHistory = ref(false)
@@ -117,19 +125,25 @@ const filteredCategories = computed(() => {
 
 // 获取题目列表
 const fetchQuestions = async (page = 1) => {
+  // 确保传递给fetchQuestions的是一个数字
+  const pageNum = typeof page === 'number' ? page : parseInt(page) || 1;
+
   loading.value = true
   try {
     const params = {
+      // 构建查询参数
       search: filters.search,
       category: filters.category,
       difficulty: filters.difficulty,
-      page,
-      page_size: pageSize
+      page: pageNum,  // 当前页码
+      page_size: pageSize  // 每页数量
     }
+
     const response = await api.get('questions/questions/', {params})
+
     questions.value = response.data.results || response.data
     total.value = response.data.count || questions.value.length
-    currentPage.value = page
+    currentPage.value = pageNum
     await updateInteractionStatus()
   } catch (err) {
     ElMessage.error('获取题目失败')
@@ -142,13 +156,14 @@ const fetchQuestions = async (page = 1) => {
 const fetchCategories = async () => {
   try {
     const response = await api.get('questions/categories/')
-    categories.value = response.data
+    // 后端返回id，name，parent 字段
+    categories.value = response.data.results || response.data
   } catch (err) {
     ElMessage.error('获取分类失败')
   }
 }
 
-// 跳转到答题页
+// 跳转到答题页,传递参数 questionId到答题页
 const goToPractice = (questionId, interactionId) => {
   router.push({
     name: 'PracticeDetail',
@@ -162,6 +177,7 @@ const updateInteractionStatus = async () => {
   try {
     const questionIds = questions.value.map(q => q.id).join(',')
     const response = await api.get('practice/interactions/', {params: {question__in: questionIds}})
+    console.log(response)
     interactionStatusCache.value = {}
     response.data.forEach(int => {
       interactionStatusCache.value[int.question] = {
@@ -169,6 +185,7 @@ const updateInteractionStatus = async () => {
         text: int.score !== null ? `已完成 (评分: ${int.score})` : '已开始'
       }
     })
+    console.log('更新缓存', interactionStatusCache.value)
   } catch (err) {
     console.warn('状态更新失败')
   }

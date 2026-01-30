@@ -9,11 +9,11 @@ import PracticeDetail from '@/components/PracticeDetail.vue'
 
 const routes = [
     {path: '/', redirect: '/profile'},
-    {path: '/register', component: Register},
-    {path: '/login', component: Login},
-    {path: '/profile', component: Profile, meta: {requiresAuth: true}},
-    {path: '/questions', component: QuestionsList, meta: {requiresAuth: true}},
-    {path: '/categories', component: CategoryManager, meta: {requiresAuth: true}},
+    {path: '/register', component: Register, meta: {requiresAuth: false}, name: 'Register'},
+    {path: '/login', component: Login, meta: {requiresAuth: false}, name: 'Login'},
+    {path: '/profile', component: Profile, meta: {requiresAuth: true}, name: 'Profile'},
+    {path: '/questions', component: QuestionsList, meta: {requiresAuth: true}, name: 'QuestionsList'},
+    {path: '/categories', component: CategoryManager, meta: {requiresAuth: true}, name: 'CategoryManager'},
     {path: '/practice', component: Practice, meta: {requiresAuth: true}, name: 'Practice'},
     {path: '/practice/:id', component: PracticeDetail, meta: {requiresAuth: true}, name: 'PracticeDetail'}
 ];

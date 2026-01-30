@@ -5,6 +5,8 @@ from .models import Interaction
 from .serializers import InteractionSerializer
 from questions.models import Question
 from sentence_transformers import SentenceTransformer, util
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
 
 # 全局加载模型（节省资源）
 model = SentenceTransformer(
@@ -14,10 +16,24 @@ model = SentenceTransformer(
 class InteractionViewSet(viewsets.ModelViewSet):
     serializer_class = InteractionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['question']  # 允许按题目过滤
 
     def get_queryset(self):
-        # 只返回当前用户的数据
-        return Interaction.objects.filter(user=self.request.user)
+        queryset = Interaction.objects.filter(user=self.request.user)
+
+        question_id = self.request.query_params.get('question', None)
+        if question_id is not None:
+            queryset = queryset.filter(question_id=question_id)
+
+        # 处理 question__in 参数过滤（多个题目ID）
+        question_in = self.request.query_params.get('question__in', None)
+        if question_in is not None:
+            question_ids = [int(i) for i in question_in.split(',') if i.isdigit()]
+            if question_ids:
+                queryset = queryset.filter(question_id__in=question_ids)
+
+        return queryset
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

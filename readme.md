@@ -498,7 +498,7 @@ class QuestionViewSet(viewsets.ModelViewSet):
 
 
 
-### 过滤后端配置
+### 过滤搜索配置
 
 ```python
 filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]  # 过滤、搜索、排序
@@ -530,15 +530,218 @@ filterset_fields = ['category', 'is_approved', 'difficulty']  # 过滤字段
 
 
 
+**inline** 模式下，Element Plus 会把多个 <el-form-item> 变成“行内布局”，为了实现紧凑的横向排列，它会对内部组件的宽度、display 等做一些强制调整。
+
+但这些调整会和 <el-select> 的弹出层（dropdown）定位机制产生冲突，导致选中值后，**标签（显示的文字）无法正确渲染到输入框内**（看起来还是 placeholder）。
+
+<u>**怎么解决？**</u>
+
+以下是几种可行的解决方案，按推荐顺序排列：
+
+**保留 inline，但给 el-select 指定固定宽度**
+
+```vue
+<el-form :model="filters" inline>
+  <el-form-item label="分类" prop="category">
+    <el-select
+      v-model="filters.category"
+      placeholder="选择分类"
+      clearable
+      style="width: 160px;"   <!-- 或 180px / 200px，根据你的布局调整 -->
+    >
+      <!-- options -->
+    </el-select>
+  </el-form-item>
+
+  <!-- 其他 select 也同样加 style="width: xxx" -->
+</el-form>
+```
+
+
+
+### 分页模块实现
+
+```json
+// 标准object对象
+{
+    "count": 128,
+    "next": "http://localhost:8000/api/questions/questions/?page=2&page_size=10&search=",
+    "previous": null,
+    "results": [
+        {
+            "id": 1,
+            "title": "什么是python？",
+            "answer": "Python 是一种编程语言，它有对象、模块、线程、异常处理和自动内存管理。\nPython 是一种解释型语言，Python 在代码运行之前不需要编译解释执行。\nPython 是动态类型语言，在声明变量时，不需要说明变量的类型。\nPython 适合面向对象的编程，因为它支持通过组合与继承的方式定义类。\nPython 代码编写快，但是运行速度比编译型语言通常要慢。\nPython 用途广泛，常被称之\"胶水语言\"，可帮助其他语言和组件改善运行状况。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.073835Z",
+            "explanation": "nan"
+        },
+        {
+            "id": 2,
+            "title": "赋值、浅拷贝和深拷贝的区别？",
+            "answer": "对象的赋值就是简单的对象引用。赋值操作(包括对象作为参数、返回值)不会开辟新的内存空间，它只是复制了对象的引用。没有其他的内存开销。\n浅拷贝会创建新对象，其内容非原对象本身的引用，而是原对象内第一层对象的引用。浅拷贝有三种形式:切片操作、工厂函数、copy 模块中的 copy 函数。\n深拷贝只有一种形式，copy 模块中的 deepcopy() 函数。深拷贝和浅拷贝对应，深拷贝拷贝了对象的所有元素，包括多层嵌套的元素。因此，它的时间和空间开销要高。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.080815Z",
+            "explanation": "nan"
+        },
+        {
+            "id": 3,
+            "title": "init 和__new__的区别？",
+            "answer": "当我们使用类名()创建对象的时候，Python 解释器会帮我们做两件事情：第一件是为对象在内存分配空间，第二件是为对象进行初始化。分配空间是__new__ 方法，初始化是__init__方法。\nnew 方法在内部其实做了两件时期：第一件事是为对象分配空间，第二件事是把对象的引用返回给 Python 解释器。当 Python 的解释器拿到了对象的引用之后，就会把对象的引用传递给 init 的第一个参数 self，init 拿到对象的引用之后，就可以在方法的内部，针对对象来定义实例属性。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.085781Z",
+            "explanation": "nan"
+        },
+        {
+            "id": 4,
+            "title": "Python 的变量、对象以及引用？",
+            "answer": "变量是到内存空间的一个指针，也就是拥有指向对象连接的空间；\n对象是一块内存，表示它们所代表的值；\n引用就是自动形成的从变量到对象的指针。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.090900Z",
+            "explanation": "在 Python 中使用变量的时候不需要提前声明变量及其类型，变量还是会正常工作。在 Python 中，这个是以一种非常流畅的方式完成，下面以 a = 1 为例我们来看一下它到底是个什么情况。\n首先是怎么知道创建了变量：对于变量 a，或者说是变量名 a，当程序第一次给它赋值的时候就创建了它，其实真实情况是 Python 在代码运行之前就先去检测变量名，我们不去具体深究这些，你只需要当作是「最开始的赋值创建了变量」。\n再者是怎么知道变量是什么类型：其实这个很多人都没有搞清楚，「类型」这个概念不是存在于变量中，而是存在于对象中。变量本身就是通用的，它只是恰巧在某个时间点上引用了当时的特定对象而已。就比如说在表达式中，我们用的那个变量会立马被它当时所引用的特定对象所替代。\n上面这个是动态语言明显区别于静态语言的地方，其实对于刚开始来说，如果你适应将「变量」和「对象」分开，动态类型你也就可以很容易理解了。"
+        },
+        {
+            "id": 5,
+            "title": "创建百万级实例如何节省内存？",
+            "answer": "定义类的slot属性，用它来声明实例属性的列表，可以用来减少内存空间的目的。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 2,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.095784Z",
+            "explanation": "nan"
+        },
+        {
+            "id": 6,
+            "title": "Python 里面如何生成随机数？",
+            "answer": "在Python中用于生成随机数的模块是random，在使用前需要import。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.100431Z",
+            "explanation": "random.random()：生成一个 0-1 之间的随机浮点数\nrandom.uniform(a, b)：生成[a,b]之间的浮点数\nrandom.randint(a, b)：生成[a,b]之间的整数\nrandom.randrange(a, b, step)：在指定的集合[a,b)中，以 step 为基数随机取一个数\nrandom.choice(sequence)：从特定序列中随机取一个元素，这里的序列可以是字符串，列表，元组等。"
+        },
+        {
+            "id": 7,
+            "title": "Python 是强语言类型还是弱语言类型？",
+            "answer": "Python 是强类型的动态脚本语言。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.106252Z",
+            "explanation": "强类型：不允许不同类型相加。\n动态：不使用显示数据类型声明，且确定一个变量的类型是在第一次给它赋值的时候。\n脚本语言：一般也是解释型语言，运行代码只需要一个解释器，不需要编译。"
+        },
+        {
+            "id": 8,
+            "title": "谈一下什么是解释性语言，什么是编译性语言？",
+            "answer": "计算机不能直接理解高级语言，只能直接理解机器语言，所以必须要把高级语言翻译成机器语言，计算机才能执行高级语言编写的程序。\n解释性语言在运行程序的时候才会进行翻译。\n编译型语言写的程序在执行之前，需要一个专门的编译过程，把程序编译成机器语言（可执行文件）。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.111092Z",
+            "explanation": "nan"
+        },
+        {
+            "id": 9,
+            "title": "Python 中有日志吗?怎么使用？",
+            "answer": "Python中有日志，Python自带logging模块，调用logging.basicConfig()方法，配置需要的日志等级和相应的参数，Python解释器会按照配置的参数生成相应的日志。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.115829Z",
+            "explanation": "Python标准库中提供了logging模块供我们使用。在最简单的使用中，默认情况下logging将日志打印到屏幕终端，我们可以直接导入logging模块，然后调用 debug，info，warn，error 和 critical 等函数来记录日志，默认日志的级别为 warning，级别比 warning 高的日志才会被显示（critical> error>warning>info>debug），级别是一个逻辑上的概念，用来区分日志的重要程度。"
+        },
+        {
+            "id": 10,
+            "title": "Python 是如何进行类型转换的？",
+            "answer": "内建函数封装了各种转换函数，可以使用目标类型关键字强制类型转换，进制之间的转换可以用 int('str'，base='n')将特定进制的字符串转换为十进制，再用相应的进制转换函数将十进制转换为目标进制。",
+            "category": {
+                "id": 1,
+                "name": "Python-Python基础",
+                "parent": null
+            },
+            "creator": 2,
+            "difficulty": 1,
+            "is_approved": true,
+            "created_at": "2026-01-23T07:08:10.121176Z",
+            "explanation": "nan"
+        }
+    ]
+}
+```
+
+
+
+
+
 
 
 # 答题练习模块
 
+如果打开练习页面，但是没有进行答案提交，也会记录此次的交互行为。
 
+即使没提交答案，用户打开题目、浏览、停留一段时间，这些行为本身就是很强的**隐式反馈**（**implicit feedback**）。
 
+### 交互记录创建策略
 
-
-
+| 场景                                                    | 是否创建记录           | 记录哪些字段                                                 | 后续处理建议                           |
+| :------------------------------------------------------ | ---------------------- | ------------------------------------------------------------ | -------------------------------------- |
+| 用户只是点开题目，没做任何操作。                        | 不创建（避免垃圾数据） | —                                                            | —                                      |
+| 用户点开题目，停留超过10s，未作答且未点击提交答案按钮。 | 创建                   | question, user, time_spent, is_submitted=False               | 可标记为“浏览记录”或用 status 字段区分 |
+| 用户输入了部分答案但未点击提交答案按钮。                | 建议创建               | question, user, answer（部分内容）, time_spent, is_submitted=False | 下次再进入可恢复草稿                   |
+| 用户提交了答案。                                        | 必须创建               | 完整字段（含 score 如果已评分）                              | 正常流程                               |
 
 
 
