@@ -747,11 +747,544 @@ filterset_fields = ['category', 'is_approved', 'difficulty']  # 过滤字段
 
 
 
+评分前端
+
+```vue
+<template>
+  <div class="practice-detail-container">
+    <h2>{{ question.title || '加载中...' }}</h2>
+
+    <div v-if="loading">加载中...</div>
+    <div v-else-if="!question.id">
+      <p>题目不存在或加载失败</p>
+    </div>
+
+    <!--答题界面-->
+    <div v-else>
+      <!-- 题目内容 -->
+      <div class="question-content">
+        <h3>题目描述：</h3>
+        <p>{{ question.title }}</p>
+      </div>
+
+      <!-- 用户答案输入（如果未评分且未提交） -->
+      <el-form ref="answerFormRef" :model="form" label-width="100px"
+               v-if="interaction.score === null && !isSubmitted.value">
+        <el-form-item label="你的答案" prop="answer">
+          <el-input v-model="form.answer" type="textarea" :rows="8" placeholder="请输入你的答案"/>
+        </el-form-item>
+      </el-form>
+
+      <!-- 计时器 -->
+      <div class="timer">答题时长：{{ timeSpent }} 秒</div>
+
+      <!-- 如果已提交，显示答案 -->
+      <div v-if="isSubmitted.value">
+        <h3>你的答案：</h3>
+        <p>{{ interaction.answer }}</p>
+      </div>
+
+      <!-- 如果已评分，显示评分反馈和正确答案 -->
+      <div v-if="interaction.score !== null">
+        <h3>评分反馈：</h3>
+        <el-rate v-model="form.score" disabled show-score text-color="#ff9900" score-template="{value}"/>
+
+        <h3>正确答案：</h3>
+        <p>{{ question.answer }}</p>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div class="actions">
+      <el-button @click="goBack">返回列表</el-button>
+      <el-button v-if="interaction.score === null && !isSubmitted.value" type="primary" :loading="submitting"
+                 @click="submitAnswer">提交答案
+      </el-button>
+      <el-button type="info" @click="toggleFavorite"> {{ interaction.is_favorite ? '取消收藏' : '收藏' }}</el-button>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import {ref, reactive, onMounted, onUnmounted, watch} from 'vue'
+import {useRouter, useRoute} from 'vue-router'
+import {ElMessage} from 'element-plus'
+import {debounce} from "lodash";
+import api from '@/api.js'
+
+const router = useRouter()
+const route = useRoute()
+
+const questionId = route.params.id
+const hasMeaningfulAction = ref(false)  // 标记是否为“有意义操作”（输入或浏览时间>10s）
+const isSubmitted = ref(false)  // 跟踪is_submitted，初始从后端获取
+const interactionIdQuery = route.query.interaction  // 如果从历史进入，带 interaction id
+
+const question = ref({})
+const interaction = reactive({
+  id: null,
+  score: null,
+  answer: '',
+  is_favorite: false,
+  time_spent: 0,
+  is_submitted: false // 新增初始化
+})
+
+const form = reactive({
+  answer: '',
+  score: null
+})
+
+const loading = ref(true)
+const submitting = ref(false)
+const timeSpent = ref(0)
+let timerInterval = null
+
+// 加载题目和交互
+const loadData = async () => {
+  // 题目ID不能为空
+  if (!questionId) {
+    ElMessage.error('题目ID不能为空')
+    goBack()
+    return
+  }
+
+  loading.value = true
+  try {
+    // 获取题目
+    const qResponse = await api.get(`questions/questions/${questionId}/`)
+    question.value = qResponse.data.results || qResponse.data
+
+    // 获取或创建交互
+    let iResponse
+    if (interactionIdQuery) {
+      // 如果从历史记录进入，加载对应的交互记录
+      iResponse = await api.get(`practice/interactions/${interactionIdQuery}/`)
+    } else {
+      iResponse = await api.get('practice/interactions/', {params: {question: questionId}})
+      if (Array.isArray(iResponse.data) && iResponse.data.length > 0) {
+        iResponse = {data: iResponse.data[0]}  // 只取第一条（后端过滤未提交的）
+      } else if (!Array.isArray(iResponse.data)) {
+        iResponse = iResponse
+      } else {
+        // 返回空数组：不创建，设置为空
+        iResponse = {data: {id: null, score: null, answer: '', time_spent: 0, is_favorite: false, is_submitted: false}}
+      }
+    }
+    console.log('iResponse:', iResponse)
+    Object.assign(interaction, iResponse.data)  // 用assign避免reactive覆盖
+
+
+    form.answer = interaction.answer || ''
+    form.score = interaction.score
+    timeSpent.value = interaction.time_spent || 0
+    isSubmitted.value = interaction.is_submitted || false
+
+    console.log('iResponse data status:', iResponse.data.status)
+    interaction.status = iResponse.data.status || ''
+    console.log('interaction:', interaction.status)
+    if (interaction.status === 'viewed') {
+      timeSpent.value = 0  // 重置，不累加浏览时长
+    }
+
+    if (interaction.score === undefined) interaction.score = null
+
+    if (interaction.score === null) startTimer()
+
+    // 如果已有记录，标记为有操作
+    if (interaction.id) hasMeaningfulAction.value = true
+  } catch (err) {
+    console.error('加载失败:', err)
+    ElMessage.error(err.response?.data?.message || err.message || '加载失败')
+    goBack()
+  } finally {
+    loading.value = false
+  }
+}
+
+// 处理浏览记录
+const saveViewRecord = async () => {
+  const data = {
+    question: questionId,
+    time_spent: timeSpent.value,
+    is_submitted: false,
+    status: 'viewed'  // 可选标记浏览
+  }
+
+  try {
+    const response = await api.post('practice/interactions/', data)
+    // 不需更新本地interaction（页面已卸载）
+  } catch (err) {
+    console.error('保存浏览记录失败:', err)
+    // 静默失败，避免打扰
+  }
+}
+
+// 监听答案变化，debounce自动保存草稿
+watch(() => form.answer, debounce(async (newVal) => {
+  if (newVal && !isSubmitted.value) {
+    hasMeaningfulAction.value = true
+    await saveDraft()
+  }
+}, 3000)) // 3s防抖
+
+// 提交答案
+const submitAnswer = async () => {
+  if (!form.answer) {
+    ElMessage.warning('请输入答案')
+    return
+  }
+
+  submitting.value = true
+  stopTimer()
+
+  const data = {
+    question: questionId,  // 以防无id
+    answer: form.answer,
+    time_spent: timeSpent.value,
+    is_submitted: true  // 标记已提交（修正字段名）
+  }
+
+  try {
+    let response
+    if (interaction.id) {
+      response = await api.patch(`practice/interactions/${interaction.id}/`, data)
+    } else {
+      response = await api.post('practice/interactions/', data)
+      interaction.id = response.data.id
+    }
+    Object.assign(interaction, response.data)
+    isSubmitted.value = true
+    hasMeaningfulAction.value = true
+    ElMessage.success('答案提交成功')
+
+    // 答案提交自动获取评分
+    await getScore()
+  } catch (err) {
+    console.error('提交失败:', err)
+    ElMessage.error(err.response?.data?.message || err.message || '提交失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+// 保存草稿
+const saveDraft = async () => {
+  if (!form.answer) return // 忽略空答案
+
+  const data = {
+    question: questionId,
+    answer: form.answer,
+    time_spent: timeSpent.value,
+    is_submitted: false,  // 草稿
+    status: 'draft'
+  }
+
+  try {
+    let response
+    if (interaction.id) {
+      // 如果已存在交互，更新
+      response = await api.patch(`practice/interactions/${interaction.id}/`, data)
+    } else {
+      // 创建交互
+      response = await api.post('practice/interactions/', data)
+      interaction.id = response.data.id
+    }
+    Object.assign(interaction, response.data)  // 更新本地
+    ElMessage.success('草稿已自动保存')
+  } catch (err) {
+    console.error('保存草稿失败:', err)
+    ElMessage.error('保存草稿失败')
+  }
+}
+
+// 获取评分
+const getScore = async () => {
+  if (!interaction.id) {
+    ElMessage.error('交互ID不存在')
+    return
+  }
+
+  if (!interaction.answer) {
+    ElMessage.warning('请先提交答案')
+    return
+  }
+
+  try {
+    const response = await api.post(`practice/interactions/${interaction.id}/score/`)
+    form.score = response.data.score
+    interaction.score = response.data.score
+    ElMessage.success(`评分：${response.data.score}`)
+  } catch (err) {
+    console.error('评分失败:', err)
+    ElMessage.error(err.response?.data?.message || err.message || '评分失败')
+  }
+}
+
+// 切换收藏
+const toggleFavorite = async () => {
+  if (!interaction.id) {
+    ElMessage.error('交互ID不存在')
+    return
+  }
+
+  try {
+    const response = await api.post(`practice/interactions/${interaction.id}/favorite/`)
+    interaction.is_favorite = response.data.is_favorite
+    ElMessage.success(response.data.is_favorite ? '收藏成功' : '取消收藏')
+  } catch (err) {
+    console.error('操作失败:', err)
+    ElMessage.error(err.response?.data?.message || err.message || '操作失败')
+  }
+}
+
+// 返回列表
+const goBack = () => {
+  stopTimer()
+  router.push({name: 'Practice'})
+}
+
+// 开始计时
+const startTimer = () => {
+  timerInterval = setInterval(() => timeSpent.value++, 1000)
+}
+
+// 停止计时
+const stopTimer = () => {
+  if (timerInterval) {
+    clearInterval(timerInterval)
+    timerInterval = null
+  }
+}
+
+// 卸载停止计时
+onUnmounted(() => {
+  stopTimer()
+  if (hasMeaningfulAction.value) {
+    // 已输入/提交：已在watch/submit中保存，无需重复
+  } else if (timeSpent.value > 10 && !form.answer.trim() && !isSubmitted.value) {
+    // 纯浏览>10s：创建浏览记录（加 trim()）
+    saveViewRecord()
+  }
+  // <10s 或有输入但未debounce：不保存，丢弃
+})
+
+// 初始加载
+onMounted(loadData)
+</script>
+
+<style scoped>
+.practice-detail-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.question-content {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.timer {
+  text-align: right;
+  color: #999;
+  margin-bottom: 10px;
+}
+
+.actions {
+  margin-top: 20px;
+  text-align: right;
+}
+</style>
+```
 
 
 
+评分后端
+
+```python
+from rest_framework import viewsets, permissions
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from .models import Interaction
+from .serializers import InteractionSerializer
+from questions.models import Question
+from sentence_transformers import SentenceTransformer, util
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+import math
+import re
+from django.core.cache import cache
+from rest_framework import status
+import requests  # 导入，用于调用DeepSeek API
+import os  # 导入，用于获取环境变量（API密钥）
+
+# 全局加载模型（节省资源）
+model = SentenceTransformer(
+    'DMetaSoul/sbert-chinese-general-v2')  # 轻量级英文模型；如需中文，用 'paraphrase-multilingual-MiniLM-L12-v2'
+
+# DeepSeek API 配置（假设从环境变量获取密钥和端点）
+DEEPSEEK_API_URL = "https://api.deepseek.com"  # 替换为实际DeepSeek API端点
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # 从环境变量获取API密钥
 
 
+class InteractionViewSet(viewsets.ModelViewSet):
+    serializer_class = InteractionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['question']  # 允许按题目过滤
+
+    def get_queryset(self):
+        queryset = Interaction.objects.filter(user=self.request.user)
+
+        question_id = self.request.query_params.get('question', None)
+        if question_id is not None:
+            queryset = queryset.filter(question_id=question_id)
+
+        # 处理 question__in 参数过滤（多个题目ID）
+        question_in = self.request.query_params.get('question__in', None)
+        if question_in is not None:
+            question_ids = [int(i) for i in question_in.split(',') if i.isdigit()]
+            if question_ids:
+                queryset = queryset.filter(question_id__in=question_ids)
+
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def history(self, request):
+        interactions = self.get_queryset().order_by('-created_at')  # 使用过滤后的queryset
+        return Response(self.get_serializer(interactions, many=True).data)
+
+    @action(detail=True, methods=['post'])
+    def favorite(self, request, pk=None):
+        interaction = self.get_object()
+        interaction.is_favorite = not interaction.is_favorite
+        interaction.save()
+        return Response({'is_favorite': interaction.is_favorite})
+
+    @action(detail=True, methods=['post'])
+    def score(self, request, pk=None):
+        interaction = self.get_object()
+        if not interaction.answer:
+            return Response({'error': '请先提交答案'}, status=status.HTTP_400_BAD_REQUEST)
+        question = interaction.question
+        if not question.answer:
+            return Response({'error': '该题目无标准答案'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 增强预处理：去除标点、规范化空格、转小写（处理中文/英文混杂）
+        def preprocess(text):
+            text = re.sub(r'[^\u4e00-\u9fa5\w\s]', '', text)  # 保留中文、字母、数字、空格
+            text = ' '.join(text.split())  # 规范化空格
+            return text.lower()
+
+        user_answer = preprocess(interaction.answer)
+        std_answer = preprocess(question.answer)
+
+        # 最小长度检查：如果用户答案太短（<标准50%），直接低分
+        if len(user_answer) < 0.5 * len(std_answer):
+            score = 0.0
+            interaction.score = score
+            interaction.save()
+            return Response({'score': score, 'feedback': '答案过短，缺少关键内容'})
+
+        # 缓存标准答案嵌入
+        cache_key = f'question_embedding_{question.id}'
+        std_embedding = cache.get(cache_key)
+        if std_embedding is None:
+            std_embedding = model.encode(std_answer)
+            cache.set(cache_key, std_embedding, timeout=86400)  # 24小时
+
+        # 用户嵌入
+        user_embedding = model.encode(user_answer)
+
+        # 余弦相似度
+        cos_sim = util.cos_sim(user_embedding, std_embedding)[0][0].item()
+
+        # 长度惩罚（柔和版）
+        len_penalty = max(0.5, 1 - abs(len(user_answer) - len(std_answer)) / max(len(user_answer), len(std_answer),
+                                                                                 1))  # 最小0.5，避免过度惩罚
+
+        # 调整相似度
+        adjusted_sim = cos_sim * len_penalty
+
+        # 非线性映射：sigmoid，更宽容（阈值0.5，陡度6）
+        if adjusted_sim < 0.3:  # 最小阈值，避免无关答案高分
+            sigmoid_score = 0
+        else:
+            sigmoid_score = 1 / (1 + math.exp(-6 * (adjusted_sim - 0.5)))
+
+        # 缩放到0-10分数
+        # score = max(0, min(10, sigmoid_score * 10))
+
+        # 0-100
+        score = round(max(0, min(100, sigmoid_score * 100)), 1)
+
+        interaction.score = score
+        interaction.save()
+        if score >= 95:
+            score = 100
+        return Response({'score': score})
+
+    @action(detail=True, methods=['post'])
+    def deepseek_score(self, request, pk=None):
+        interaction = self.get_object()
+        if not interaction.answer:
+            return Response({'error': '请先提交答案'}, status=status.HTTP_400_BAD_REQUEST)
+        question = interaction.question
+        if not question.answer:
+            return Response({'error': '该题目无标准答案'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            prompt = f"""
+            你是一个严格的评分助手。请基于以下标准答案评估用户答案的分数。
+            标准答案：{question.answer}
+            用户答案：{interaction.answer}
+            评分标准：
+            - 内容准确性：用户答案是否覆盖标准答案的关键点？
+            - 完整性：是否遗漏重要信息？
+            - 清晰性和逻辑：表达是否清晰、逻辑是否合理？
+            - 分数范围：0-100，满分100表示完美匹配。
+            只输出分数（整数），不要添加任何解释。
+            """
+
+            headers = {
+                "Authorization": f"Bearer sk-39b536428a294f33b8c229dc4cdb2212",
+                "Content-Type": "application/json"
+            }
+            data = {
+                "model": "DeepSeek-V3.2",  # DeepSeek-V3.2
+                "messages": [{"role": "user", "content": prompt}],
+                "max_tokens": 10,
+                "temperature": 0.0  # 低温度，确保输出确定性
+            }
+
+            response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data)
+            response.raise_for_status()
+            llm_output = response.json()["choices"][0]["message"]["content"].strip()
+
+            # 解析分数（假设输出为纯数字）
+            try:
+                llm_score = float(llm_output)
+            except ValueError:
+                llm_score = 0.0  # 如果解析失败，默认0
+
+            if llm_score >= 95:
+                llm_score = 100
+
+            # 这里假设使用另一个字段存储LLM分数，如添加 interaction.llm_score = models.FloatField(null=True)
+            # 但由于模型未改，暂用 score 覆盖，或返回而不保存
+            # 为分开，建议添加新字段，但这里简单返回
+            return Response({'score': llm_score})
+
+        except requests.exceptions.RequestException as e:
+            return Response({'error': 'DeepSeek API调用失败'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+```
 
 
 

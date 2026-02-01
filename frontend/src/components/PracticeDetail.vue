@@ -21,6 +21,13 @@
         <el-form-item label="你的答案" prop="answer">
           <el-input v-model="form.answer" type="textarea" :rows="8" placeholder="请输入你的答案"/>
         </el-form-item>
+        <el-form-item label="评分方式" prop="scoringMethod">
+          <el-select v-model="form.scoringMethod" placeholder="选择评分方式">
+            <el-option label="嵌入模型" value="embedding"></el-option>
+            <el-option label="DeepSeek" value="deepseek"></el-option>
+            <el-option label="两者平均" value="both"></el-option>
+          </el-select>
+        </el-form-item>
       </el-form>
 
       <!-- 计时器 -->
@@ -34,9 +41,19 @@
 
       <!-- 如果已评分，显示评分反馈和正确答案 -->
       <div v-if="interaction.score !== null">
-        <h3>评分反馈：</h3>
-        <el-rate v-model="form.score" disabled show-score text-color="#ff9900" score-template="{value}"/>
+        <h3 v-if="form.embeddingScore !== null">嵌入模型评分：</h3>
+        <el-rate v-if="form.embeddingScore !== null" v-model="form.embeddingScore" disabled show-score
+                 text-color="#ff9900" score-template="{value}"/>
 
+        <h3 v-if="form.deepseekScore !== null">DeepSeek评分：</h3>
+        <el-rate v-if="form.deepseekScore !== null" v-model="form.deepseekScore" disabled show-score
+                 text-color="#ff9900" score-template="{value}"/>
+
+        <h3 v-if="form.score !== null">最终评分：</h3>
+        <el-rate v-if="form.score !== null" v-model="form.score" disabled show-score text-color="#ff9900"
+                 score-template="{value}"/>
+        <h3>你的答案：</h3>
+        <p>{{ interaction.answer }}</p>
         <h3>正确答案：</h3>
         <p>{{ question.answer }}</p>
       </div>
@@ -45,10 +62,9 @@
     <!-- 操作按钮 -->
     <div class="actions">
       <el-button @click="goBack">返回列表</el-button>
+      <el-button v-if="interaction.score !== null" type="warning" @click="resetAndRetry">重新答题</el-button>
       <el-button v-if="interaction.score === null && !isSubmitted.value" type="primary" :loading="submitting"
                  @click="submitAnswer">提交答案
-      </el-button>
-      <el-button v-if="interaction.score === null && isSubmitted.value" type="success" @click="getScore">获取评分
       </el-button>
       <el-button type="info" @click="toggleFavorite"> {{ interaction.is_favorite ? '取消收藏' : '收藏' }}</el-button>
     </div>
@@ -82,7 +98,10 @@ const interaction = reactive({
 
 const form = reactive({
   answer: '',
-  score: null
+  score: null,
+  embeddingScore: null,
+  deepseekScore: null,
+  scoringMethod: 'embedding' // 默认值
 })
 
 const loading = ref(true)
@@ -130,7 +149,9 @@ const loadData = async () => {
     timeSpent.value = interaction.time_spent || 0
     isSubmitted.value = interaction.is_submitted || false
 
+    console.log('iResponse data status:', iResponse.data.status)
     interaction.status = iResponse.data.status || ''
+    console.log('interaction:', interaction.status)
     if (interaction.status === 'viewed') {
       timeSpent.value = 0  // 重置，不累加浏览时长
     }
@@ -182,6 +203,10 @@ const submitAnswer = async () => {
     ElMessage.warning('请输入答案')
     return
   }
+  if (!form.scoringMethod) {
+    ElMessage.warning('请选择评分方式')
+    return
+  }
 
   submitting.value = true
   stopTimer()
@@ -205,6 +230,9 @@ const submitAnswer = async () => {
     isSubmitted.value = true
     hasMeaningfulAction.value = true
     ElMessage.success('答案提交成功')
+
+    // 根据选择的评分方式获取评分
+    await getScoreByMethod()
   } catch (err) {
     console.error('提交失败:', err)
     ElMessage.error(err.response?.data?.message || err.message || '提交失败')
@@ -213,6 +241,38 @@ const submitAnswer = async () => {
   }
 }
 
+
+// 重置交互状态并重新答题
+const resetAndRetry = async () => {
+  if (!interaction.id) {
+    ElMessage.error('交互ID不存在')
+    return
+  }
+
+  try {
+    const response = await api.post(`practice/interactions/${interaction.id}/reset_interaction/`)
+    ElMessage.success(response.data.message)
+
+    // 重置本地状态
+    form.answer = ''
+    form.score = null
+    form.embeddingScore = null
+    form.deepseekScore = null
+    interaction.score = null
+    interaction.answer = ''
+    interaction.is_submitted = false
+    interaction.status = 'draft'
+    isSubmitted.value = false
+
+    // 重启计时器
+    startTimer()
+    hasMeaningfulAction.value = true
+
+  } catch (err) {
+    console.error('重置失败:', err)
+    ElMessage.error(err.response?.data?.message || err.message || '重置失败')
+  }
+}
 // 保存草稿
 const saveDraft = async () => {
   if (!form.answer) return // 忽略空答案
@@ -243,8 +303,8 @@ const saveDraft = async () => {
   }
 }
 
-// 获取评分
-const getScore = async () => {
+// 根据方法获取评分
+const getScoreByMethod = async () => {
   if (!interaction.id) {
     ElMessage.error('交互ID不存在')
     return
@@ -256,10 +316,40 @@ const getScore = async () => {
   }
 
   try {
-    const response = await api.post(`practice/interactions/${interaction.id}/score/`)
-    form.score = response.data.score
-    interaction.score = response.data.score
-    ElMessage.success(`评分：${response.data.score}`)
+    form.embeddingScore = null
+    form.deepseekScore = null
+    form.score = null
+
+    if (form.scoringMethod === 'embedding' || form.scoringMethod === 'both') {
+      const embeddingResponse = await api.post(`practice/interactions/${interaction.id}/embedding_score/`)
+      form.embeddingScore = embeddingResponse.data.score
+      ElMessage.success(`嵌入模型评分：${form.embeddingScore}`)
+    }
+
+    if (form.scoringMethod === 'deepseek' || form.scoringMethod === 'both') {
+      const deepseekResponse = await api.post(`practice/interactions/${interaction.id}/deepseek_score/`)
+      form.deepseekScore = deepseekResponse.data.score
+      ElMessage.success(`DeepSeek评分：${form.deepseekScore}`)
+    }
+
+    // 计算最终分数
+    if (form.scoringMethod === 'both') {
+      let finalScore = Math.round((form.embeddingScore + form.deepseekScore) / 2 * 10) / 10;  // 保留一位小数
+      if (finalScore >= 95) {
+        finalScore = 100;
+      }
+      form.score = finalScore
+      interaction.score = finalScore
+    } else if (form.scoringMethod === 'embedding') {
+      form.score = form.embeddingScore
+      interaction.score = form.embeddingScore
+    } else if (form.scoringMethod === 'deepseek') {
+      form.score = form.deepseekScore
+      interaction.score = form.deepseekScore
+    }
+
+    // 可选：更新到后端
+    await api.patch(`practice/interactions/${interaction.id}/`, {score: form.score})
   } catch (err) {
     console.error('评分失败:', err)
     ElMessage.error(err.response?.data?.message || err.message || '评分失败')

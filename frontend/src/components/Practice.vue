@@ -44,6 +44,9 @@
       <el-table-column label="操作" width="100">
         <template #default="{ row }">
           <el-button size="small" type="primary" @click="goToPractice(row.id, null)">练习</el-button>
+          <el-button size="small" v-if="getInteractionStatus(row.id)?.canRetry" type="warning"
+                     @click="retryQuestion(row.id)">重新答题
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -182,7 +185,8 @@ const updateInteractionStatus = async () => {
     response.data.forEach(int => {
       interactionStatusCache.value[int.question] = {
         type: int.score !== null ? 'success' : 'info',
-        text: int.score !== null ? `已完成 (评分: ${int.score})` : '已开始'
+        text: int.score !== null ? `已完成 (评分: ${int.score})` : '已开始',
+        canRetry: int.score !== null  // 如果已经有评分，允许重新答题
       }
     })
     console.log('更新缓存', interactionStatusCache.value)
@@ -194,6 +198,30 @@ const updateInteractionStatus = async () => {
 // 获取题目状态
 const getInteractionStatus = (questionId) => {
   return interactionStatusCache.value[questionId] || {type: 'primary', text: '未练习'}
+}
+
+// 重新答题
+const retryQuestion = async (questionId) => {
+  // 首先找到对应的interaction
+  try {
+    const response = await api.get('practice/interactions/', {params: {question: questionId}});
+    const interactions = Array.isArray(response.data) ? response.data : [];
+    if (interactions.length > 0) {
+      const interaction = interactions[0]; // 获取最新的交互记录
+      if (interaction.id) {
+        // 重置交互状态
+        const resetResponse = await api.post(`practice/interactions/${interaction.id}/reset_interaction/`);
+        ElMessage.success(resetResponse.data.message);
+        // 跳转到练习页面
+        goToPractice(questionId, interaction.id);
+      }
+    } else {
+      ElMessage.error('找不到答题记录');
+    }
+  } catch (err) {
+    console.error('重新答题失败:', err);
+    ElMessage.error(err.response?.data?.message || err.message || '重新答题失败');
+  }
 }
 
 // 获取历史记录
