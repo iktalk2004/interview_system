@@ -11,16 +11,16 @@ import math
 import re
 from django.core.cache import cache
 from rest_framework import status
-import requests  # 新增导入，用于调用DeepSeek API
-import os  # 新增导入，用于获取环境变量（如API密钥）
+import requests
+import os
+from django.conf import settings
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
+from scoring.models import ScoringHistory
 
 # 全局加载模型（节省资源）
 model = SentenceTransformer(
     'DMetaSoul/sbert-chinese-general-v2')  # 轻量级英文模型；如需中文，用 'paraphrase-multilingual-MiniLM-L12-v2'
-
-# DeepSeek API 配置（假设从环境变量获取密钥和端点）
-DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"  # DeepSeek API端点
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # 从环境变量获取API密钥
 
 
 class InteractionViewSet(viewsets.ModelViewSet):
@@ -48,11 +48,19 @@ class InteractionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    @swagger_auto_schema(
+        operation_description="获取当前用户的答题历史记录",
+        responses={200: InteractionSerializer(many=True)}
+    )
     @action(detail=False, methods=['get'])
     def history(self, request):
-        interactions = self.get_queryset().order_by('-created_at')  # 使用过滤后的queryset
+        interactions = self.get_queryset().order_by('-created_at')
         return Response(self.get_serializer(interactions, many=True).data)
 
+    @swagger_auto_schema(
+        operation_description="收藏或取消收藏题目",
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={'is_favorite': openapi.Schema(type=openapi.TYPE_BOOLEAN)})}
+    )
     @action(detail=True, methods=['post'])
     def favorite(self, request, pk=None):
         interaction = self.get_object()
@@ -60,11 +68,13 @@ class InteractionViewSet(viewsets.ModelViewSet):
         interaction.save()
         return Response({'is_favorite': interaction.is_favorite})
 
+    @swagger_auto_schema(
+        operation_description="重置交互状态，允许重新答题",
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={'message': openapi.Schema(type=openapi.TYPE_STRING), 'status': openapi.Schema(type=openapi.TYPE_STRING), 'score': openapi.Schema(type=openapi.TYPE_NUMBER)})}
+    )
     @action(detail=True, methods=['post'])
     def reset_interaction(self, request, pk=None):
-        """重置交互状态，允许重新答题"""
         interaction = self.get_object()
-        # 重置为草稿状态，允许重新答题
         interaction.score = None
         interaction.answer = ''
         interaction.is_submitted = False
@@ -76,9 +86,12 @@ class InteractionViewSet(viewsets.ModelViewSet):
             'score': interaction.score
         })
 
+    @swagger_auto_schema(
+        operation_description="使用嵌入模型计算答案分数",
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={'score': openapi.Schema(type=openapi.TYPE_NUMBER)})}
+    )
     @action(detail=True, methods=['post'])
     def embedding_score(self, request, pk=None):
-        """使用嵌入模型计算分数"""
 
         interaction = self.get_object()
         if not interaction.answer:
@@ -134,13 +147,31 @@ class InteractionViewSet(viewsets.ModelViewSet):
         if embedding_score >= 95:
             embedding_score = 100
 
-        interaction.score = embedding_score  # 这里假设score字段存储最终分数，但既然分开，可考虑添加新字段
+        details = {
+            'cosine_similarity': float(cos_sim),
+            'length_penalty': float(len_penalty),
+            'adjusted_similarity': float(adjusted_sim),
+            'sigmoid_score': float(sigmoid_score)
+        }
+
+        interaction.score = embedding_score
         interaction.save()
+
+        ScoringHistory.objects.create(
+            interaction=interaction,
+            scoring_method='embedding',
+            score=embedding_score,
+            details=details
+        )
+
         return Response({'score': embedding_score})
 
+    @swagger_auto_schema(
+        operation_description="使用DeepSeek API计算答案分数",
+        responses={200: openapi.Schema(type=openapi.TYPE_OBJECT, properties={'score': openapi.Schema(type=openapi.TYPE_NUMBER)})}
+    )
     @action(detail=True, methods=['post'])
     def deepseek_score(self, request, pk=None):
-        """使用DeepSeek API计算分数"""
         interaction = self.get_object()
         if not interaction.answer:
             return Response({'error': '请先提交答案'}, status=status.HTTP_400_BAD_REQUEST)
@@ -159,10 +190,13 @@ class InteractionViewSet(viewsets.ModelViewSet):
             只输出分数（整数），不要添加任何解释。
             """
 
-            # DeepSeek API密钥
-            api_key = "sk-208c01d7f58542fea8156991f1475fe7"
+            # 从环境变量获取 DeepSeek API 密钥
+            api_key = os.getenv('DEEPSEEK_API_KEY')
+            if not api_key:
+                return Response({'error': '未配置 DeepSeek API 密钥'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
             # DeepSeek API端点
-            api_url = "https://api.deepseek.com/chat/completions"
+            api_url = os.getenv('DEEPSEEK_API_URL', 'https://api.deepseek.com/chat/completions')
 
             headers = {
                 "Authorization": f"Bearer {api_key}",
@@ -190,10 +224,25 @@ class InteractionViewSet(viewsets.ModelViewSet):
 
                 # 解析分数
                 llm_score = float(re.search(r'\d+', llm_output).group())
-                llm_score = max(0, min(100, llm_score))  # 限制分数在0-100范围内
+                llm_score = max(0, min(100, llm_score))
 
                 if llm_score >= 95:
                     llm_score = 100
+
+                details = {
+                    'llm_output': llm_output,
+                    'model': 'deepseek-chat'
+                }
+
+                interaction.score = llm_score
+                interaction.save()
+
+                ScoringHistory.objects.create(
+                    interaction=interaction,
+                    scoring_method='llm',
+                    score=llm_score,
+                    details=details
+                )
 
                 return Response({'score': llm_score})
             else:

@@ -1298,7 +1298,117 @@ class InteractionViewSet(viewsets.ModelViewSet):
 
 
 
+数据模型：
 
+```python
+from django.db import models
+from django.contrib.auth.hashers import make_password, check_password
+from django.utils import timezone
+
+class User(models.Model):
+    # 核心字段
+    username = models.CharField(max_length=150, unique=True, db_index=True)  # 添加索引加速查询
+    password = models.CharField(max_length=128)  # Hashed
+    email = models.EmailField(unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)  # 新增：最后更新时间
+
+    # 扩展字段：用户偏好和角色
+    role = models.CharField(max_length=20, choices=[('user', 'User'), ('admin', 'Admin'), ('moderator', 'Moderator')], default='user')  # RBAC支持
+    preferred_language = models.CharField(max_length=10, choices=[('python', 'Python'), ('java', 'Java'), ('cpp', 'C++')], default='python')  # 编程语言偏好，用于个性化推荐
+    level = models.CharField(max_length=20, choices=[('beginner', 'Beginner'), ('intermediate', 'Intermediate'), ('advanced', 'Advanced')], default='beginner')  # 用户水平，辅助CF冷启动
+    is_active = models.BooleanField(default=True)  # 软删除支持
+
+    def save(self, *args, **kwargs):
+        if not self.password.startswith('pbkdf2_'):
+            self.password = make_password(self.password)
+        super().save(*args, **kwargs)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+
+    class Meta:
+        indexes = [models.Index(fields=['username', 'email'])]  # 复合索引
+
+class Tag(models.Model):
+    # 独立标签表，支持多对多
+    name = models.CharField(max_length=50, unique=True, db_index=True)
+    description = models.TextField(blank=True)
+
+class Question(models.Model):
+    # 核心字段
+    title = models.CharField(max_length=255, db_index=True)
+    description = models.TextField()  # 支持Markdown
+    difficulty = models.CharField(max_length=10, choices=[('Easy', 'Easy'), ('Medium', 'Medium'), ('Hard', 'Hard')], db_index=True)
+    tags = models.ManyToManyField(Tag, related_name='questions')  # 多对多标签，替换JSONField，便于查询
+    test_cases = models.JSONField(default=list)  # [{"input": str, "output": str, "timeout": int}] 扩展：添加超时
+
+    # 扩展字段
+    creator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_questions')  # 创建者
+    version = models.IntegerField(default=1)  # 版本控制
+    language = models.CharField(max_length=10, choices=[('python', 'Python'), ('java', 'Java'), ('cpp', 'C++')], default='python')  # 支持语言
+    hints = models.TextField(blank=True)  # 提示
+    solution_code = models.TextField(blank=True)  # 官方解答（仅admin可见）
+    popularity = models.IntegerField(default=0)  # 基于提交次数计算
+    acceptance_rate = models.FloatField(default=0.0)  # AC率
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['difficulty', 'popularity'])]  # 排序查询优化
+
+class Submission(models.Model):
+    # 核心字段
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='submissions')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='submissions')
+    code = models.TextField()
+    result = models.CharField(max_length=10, choices=[('AC', 'Accepted'), ('WA', 'Wrong Answer'), ('TLE', 'Time Limit Exceeded'), ('CE', 'Compile Error'), ('RE', 'Runtime Error')])  # 扩展结果类型
+    score = models.IntegerField(default=0)  # 基于result计算
+    execution_time = models.FloatField(default=0.0)  # 执行时间（ms）
+    memory_used = models.FloatField(default=0.0)  # 内存使用（MB）
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    # 扩展字段
+    language = models.CharField(max_length=10, default='python')
+    feedback = models.TextField(blank=True)  # 自动反馈（如错误行）
+
+    class Meta:
+        indexes = [models.Index(fields=['user', 'question', 'submitted_at'])]  # 时间序列查询优化
+        ordering = ['-submitted_at']  # 默认最新优先
+
+class UserSimilarity(models.Model):
+    user1 = models.ForeignKey(User, related_name='sim_user1', on_delete=models.CASCADE)
+    user2 = models.ForeignKey(User, related_name='sim_user2', on_delete=models.CASCADE)
+    similarity = models.FloatField()  # 余弦相似度等
+    calculated_at = models.DateTimeField(default=timezone.now)  # 新增：计算时间，便于过期更新
+
+    class Meta:
+        unique_together = ('user1', 'user2')
+        indexes = [models.Index(fields=['user1', 'user2'])]
+
+class QuestionSimilarity(models.Model):
+    question1 = models.ForeignKey(Question, related_name='sim_question1', on_delete=models.CASCADE)
+    question2 = models.ForeignKey(Question, related_name='sim_question2', on_delete=models.CASCADE)
+    similarity = models.FloatField()
+    calculated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        unique_together = ('question1', 'question2')
+        indexes = [models.Index(fields=['question1', 'question2'])]
+
+class AuditLog(models.Model):
+    # 企业级：审计日志
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    action = models.CharField(max_length=50)  # e.g., 'create_question', 'submit_code'
+    target_model = models.CharField(max_length=50)  # e.g., 'Question'
+    target_id = models.IntegerField(null=True)
+    details = models.JSONField(default=dict)  # 变更细节
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['timestamp', 'user'])]
+```
 
 
 

@@ -108,4 +108,72 @@ api.interceptors.response.use(
     }
 )
 
+// 用户认证相关
+export const authAPI = {
+    login: (username, password) => api.post('users/login/', { username, password }),
+    register: (username, email, password) => api.post('users/register/', { username, email, password }),
+    logout: () => api.post('users/logout/'),
+    getUserProfile: () => api.get('users/profile/'),
+    updateUserProfile: (data) => api.put('users/profile/', data)
+};
+
+// 题目相关
+export const questionsAPI = {
+    getQuestions: (params) => api.get('questions/', { params }),
+    getQuestion: (id) => api.get(`questions/${id}/`),
+    createQuestion: (data) => api.post('questions/', data),
+    updateQuestion: (id, data) => api.put(`questions/${id}/`, data),
+    deleteQuestion: (id) => api.delete(`questions/${id}/`)
+};
+
+// 分类相关
+export const categoriesAPI = {
+    getCategories: () => api.get('categories/'),
+    getCategory: (id) => api.get(`categories/${id}/`),
+    createCategory: (data) => api.post('categories/', data),
+    updateCategory: (id, data) => api.put(`categories/${id}/`, data),
+    deleteCategory: (id) => api.delete(`categories/${id}/`)
+};
+
+// 练习相关
+export const practiceAPI = {
+    getInteractions: (params) => api.get('practice/interactions/', { params }),
+    getInteraction: (id) => api.get(`practice/interactions/${id}/`),
+    createInteraction: (data) => api.post('practice/interactions/', data),
+    updateInteraction: (id, data) => api.put(`practice/interactions/${id}/`, data),
+    deleteInteraction: (id) => api.delete(`practice/interactions/${id}/`),
+    getHistory: () => api.get('practice/interactions/history/'),
+    toggleFavorite: (id) => api.post(`practice/interactions/${id}/favorite/`),
+    resetInteraction: (id) => api.post(`practice/interactions/${id}/reset_interaction/`),
+    scoreByEmbedding: (id) => api.post(`practice/interactions/${id}/embedding_score/`),
+    scoreByDeepSeek: (id) => api.post(`practice/interactions/${id}/deepseek_score/`)
+};
+
+// 推荐系统相关
+export const recommenderAPI = {
+    getRecommendations: (params) => api.get('recommender/recommendations/', { params }),
+    markAsViewed: (id) => api.post(`recommender/recommendations/${id}/viewed/`),
+    markAsAnswered: (id) => api.post(`recommender/recommendations/${id}/answered/`),
+    getUserPreferences: () => api.get('recommender/preferences/'),
+    updateUserPreferences: () => api.post('recommender/preferences/update/')
+};
+
+// 数据分析相关
+export const analyticsAPI = {
+    getDashboard: () => api.get('analytics/dashboard/overview/'),
+    getDailyStats: (params) => api.get('analytics/daily-stats/', { params }),
+    getPerformanceTrend: (params) => api.get('analytics/performance-trends/', { params }),
+    getScoreDistribution: () => api.get('analytics/score-distribution/'),
+    getLeaderboard: () => api.get('analytics/dashboard/leaderboard/')
+};
+
+// 评分系统相关
+export const scoringAPI = {
+    getScores: (params) => api.get('scoring/scoring/', { params }),
+    getScore: (id) => api.get(`scoring/scoring/${id}/`),
+    createScore: (data) => api.post('scoring/scoring/', data),
+    scoreInteraction: (data) => api.post('scoring/scoring/score_interaction/', data),
+    getLatestScores: (params) => api.get('scoring/scoring/get_latest_scores/', { params })
+};
+
 export default api;

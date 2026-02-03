@@ -9,6 +9,9 @@ venv/
 .env
 *.sqlite3
 
+# Environment variables
+backend/.env
+
 # Node / Vue
 node_modules/
 dist/

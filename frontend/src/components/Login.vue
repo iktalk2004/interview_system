@@ -1,149 +1,271 @@
 <template>
-  <div class="auth-container">
-    <h2>登录</h2>
-    <form @submit.prevent="login">
-      <input v-model="form.username" placeholder="用户名" required autocomplete="current-username"/>
-      <input v-model="form.password" type="password" placeholder="密码" required autocomplete="current-password"/>
-      <button type="submit" :disabled="loading">登录</button>
-      <p v-if="error" class="error">{{ error }}</p>
-    </form>
-    <p class="register-link">
-      没有账号？
-      <router-link to="/register">去注册</router-link>
-    </p>
+  <div class="login-container">
+    <div class="login-wrapper">
+      <div class="login-header">
+        <el-icon class="logo-icon"><Reading /></el-icon>
+        <h1>欢迎回来</h1>
+        <p>登录您的账户继续学习</p>
+      </div>
+
+      <el-form
+        ref="formRef"
+        :model="form"
+        :rules="rules"
+        class="login-form"
+        @submit.prevent="handleLogin"
+      >
+        <el-form-item prop="username">
+          <el-input
+            v-model="form.username"
+            placeholder="请输入用户名"
+            size="large"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><User /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item prop="password">
+          <el-input
+            v-model="form.password"
+            type="password"
+            placeholder="请输入密码"
+            size="large"
+            show-password
+            @keyup.enter="handleLogin"
+          >
+            <template #prefix>
+              <el-icon><Lock /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item>
+          <el-button
+            type="primary"
+            size="large"
+            :loading="loading"
+            class="login-button"
+            @click="handleLogin"
+          >
+            登录
+          </el-button>
+        </el-form-item>
+      </el-form>
+
+      <div class="login-footer">
+        <span>还没有账号？</span>
+        <router-link to="/register" class="register-link">
+          立即注册
+        </router-link>
+      </div>
+    </div>
+
+    <div class="background-decoration">
+      <div class="circle circle-1"></div>
+      <div class="circle circle-2"></div>
+      <div class="circle circle-3"></div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import {reactive, ref} from 'vue'
-import {useRouter, useRoute} from 'vue-router'
-import api from '@/api.js'
+import { reactive, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { Reading, User, Lock } from '@element-plus/icons-vue'
+import api from '@/api'
 
-const router = useRouter();
-const route = useRoute();  // 获取当前路由
+const router = useRouter()
+const route = useRoute()
+const formRef = ref(null)
+
 const form = reactive({
   username: '',
-  password: '',
-});
+  password: ''
+})
 
-const loading = ref(false);
-const error = ref('');
+const rules = {
+  username: [
+    { required: true, message: '请输入用户名', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' }
+  ]
+}
 
-const login = async () => {
-  loading.value = true;
-  error.value = '';
+const loading = ref(false)
+
+const handleLogin = async () => {
+  if (!formRef.value) return
 
   try {
-    const response = await api.post('users/login/', {...form})
+    await formRef.value.validate()
+  } catch {
+    return
+  }
 
-    localStorage.setItem('access_token', response.data.access);
-    localStorage.setItem('refresh_token', response.data.refresh);
+  loading.value = true
+  try {
+    const response = await api.post('/users/login/', { ...form })
+    localStorage.setItem('access_token', response.data.access)
+    localStorage.setItem('refresh_token', response.data.refresh)
+    
+    const userData = {
+      username: form.username
+    }
+    localStorage.setItem('user_data', JSON.stringify(userData))
 
-    alert('登录成功')
-    const redirectPath = route.query.redirect || '/profile';  // 跳转到登录前的页面路径或默认首页
+    ElMessage.success('登录成功')
+    const redirectPath = route.query.redirect || '/'
     router.push(redirectPath)
   } catch (err) {
-    error.value = err.response?.data?.detail || '登录失败，请检查用户名和密码'
+    ElMessage.error(err.response?.data?.detail || '登录失败，请检查用户名和密码')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 </script>
 
 <style scoped>
-/* 现代极简设计：sans-serif字体、充足空白、平坦无阴影、细边框 */
-/* 蓝色调：主蓝 #409EFF，浅蓝 #E6F7FF，深灰文本 #303133 */
-
-.auth-container {
-  max-width: 400px;
-  margin: 100px auto 0; /* 增加顶部margin，创建垂直居中感 */
-  padding: 40px;
-  background-color: #FFFFFF; /* 白背景 */
-  border: 1px solid #DCDFE6; /* 浅灰细边框 */
-  border-radius: 4px; /* 小圆角 */
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; /* 现代字体 */
-  text-align: center; /* 居中对齐 */
-}
-
-h2 {
-  font-size: 24px;
-  font-weight: normal; /* 非粗体，极简 */
-  color: #303133; /* 深灰标题 */
-  margin-bottom: 32px; /* 增加间距 */
-}
-
-form {
+.login-container {
+  min-height: 100vh;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: relative;
+  overflow: hidden;
 }
 
-input {
+.login-wrapper {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 48px;
   width: 100%;
-  padding: 12px 16px;
-  margin-bottom: 24px; /* 增加输入框间距 */
-  border: 1px solid #DCDFE6; /* 浅灰边框 */
-  border-radius: 4px;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 10;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.logo-icon {
+  font-size: 48px;
+  color: #667eea;
+  margin-bottom: 16px;
+}
+
+.login-header h1 {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 12px 0;
+}
+
+.login-header p {
   font-size: 14px;
-  color: #606266; /* 常规文本色 */
-  background-color: #F2F6FC; /* 浅蓝灰背景 */
-  transition: border-color 0.3s ease;
+  color: #909399;
+  margin: 0;
 }
 
-input:focus {
-  border-color: #409EFF; /* 焦点时蓝边框 */
-  outline: none;
+.login-form {
+  margin-bottom: 24px;
 }
 
-button {
-  width: 100%;
-  padding: 12px;
-  background-color: #409EFF; /* 主蓝按钮 */
-  color: #FFFFFF;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
+.login-form :deep(.el-form-item) {
+  margin-bottom: 24px;
 }
 
-button:hover {
-  background-color: #66B1FF; /* 浅蓝hover */
-}
-
-button:disabled {
-  background-color: #A0CFFF; /* 禁用浅蓝 */
-  cursor: not-allowed;
-}
-
-.error {
-  color: #F56C6C; /* 红色错误，但保持极简 */
+.login-form :deep(.el-form-item__error) {
   font-size: 12px;
-  margin-top: 12px;
-  text-align: left;
+}
+
+.login-button {
   width: 100%;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 500;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.login-button:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #643a8f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.login-footer {
+  text-align: center;
+  font-size: 14px;
+  color: #606266;
 }
 
 .register-link {
-  margin-top: 24px;
-  font-size: 14px;
-  color: #909399; /* 次要灰文本 */
-}
-
-.register-link a {
-  color: #409EFF; /* 蓝链接 */
+  color: #667eea;
   text-decoration: none;
+  font-weight: 500;
+  margin-left: 4px;
 }
 
-.register-link a:hover {
+.register-link:hover {
   text-decoration: underline;
 }
 
-/* 响应式调整：移动端保持极简 */
+.background-decoration {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.circle-1 {
+  width: 300px;
+  height: 300px;
+  top: -100px;
+  right: -100px;
+}
+
+.circle-2 {
+  width: 200px;
+  height: 200px;
+  bottom: -50px;
+  left: -50px;
+}
+
+.circle-3 {
+  width: 150px;
+  height: 150px;
+  top: 50%;
+  left: 10%;
+}
+
 @media (max-width: 768px) {
-  .auth-container {
-    margin: 60px auto 0;
-    padding: 30px;
+  .login-wrapper {
+    padding: 32px;
+    margin: 20px;
+  }
+
+  .circle-1,
+  .circle-2 {
+    display: none;
   }
 }
 </style>

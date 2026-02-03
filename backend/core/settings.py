@@ -11,15 +11,20 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-sg$bxu71otf1y9$5dyvy2@j*@3w4ev@2w_j*60g7*o+p_b4)ro"
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-sg$bxu71otf1y9$5dyvy2@j*@3w4ev@2w_j*60g7*o+p_b4)ro')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -35,7 +40,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # 添加rest_framework、corsheaders、users、questions、practice、recommender、analytics应用
+    # 添加rest_framework、corsheaders、users、questions、practice、recommender、analytics、scoring应用
     "rest_framework",
     "corsheaders",
     "users",
@@ -43,6 +48,7 @@ INSTALLED_APPS = [
     "practice",
     "recommender",
     "analytics",
+    "scoring",
     # 添加jwt
     'rest_framework_simplejwt',
     # 添加django-filter

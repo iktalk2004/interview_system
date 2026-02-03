@@ -1,111 +1,243 @@
 <template>
   <div class="profile-container">
-    <h2>个人中心</h2>
-
-    <div v-if="loading">加载中...</div>
+    <div v-if="loading" class="loading-container">
+      <el-icon class="is-loading"><Loading /></el-icon>
+      <p>加载中...</p>
+    </div>
 
     <div v-else class="profile-content">
-      <!-- 用户基本信息卡片 -->
-      <div class="info-card">
-        <h3>基本信息</h3>
-        <form @submit.prevent="updateProfile" class="info-form">
-          <div class="form-group">
-            <label>用户名</label>
-            <input v-model="user.username" disabled class="disabled-input"/>
+      <!-- 用户信息头部 -->
+      <el-card class="header-card">
+        <div class="user-header">
+          <div class="avatar-section">
+            <el-avatar :size="100" :src="user.avatar || ''">
+              {{ user.username?.charAt(0).toUpperCase() }}
+            </el-avatar>
+            <el-button type="primary" size="small" @click="uploadAvatar" class="avatar-btn">
+              <el-icon><Upload /></el-icon>
+              更换头像
+            </el-button>
           </div>
-
-          <div class="form-group">
-            <label>邮箱</label>
-            <input v-model="user.email" disabled class="disabled-input"/>
+          <div class="user-info">
+            <h2 class="username">{{ user.username }}</h2>
+            <p class="email">{{ user.email }}</p>
+            <p class="bio">{{ user.bio || '这个人很懒，什么都没写' }}</p>
           </div>
-
-          <div class="form-group">
-            <label>个人简介</label>
-            <textarea v-model="form.bio" placeholder="介绍一下自己吧" rows="4"></textarea>
-          </div>
-
-          <button type="submit" :disabled="updating" class="update-btn">
-            {{ updating ? '更新中...' : '更新信息' }}
-          </button>
-        </form>
-      </div>
-
-      <!-- 技术偏好设置卡片 -->
-      <div class="preference-card">
-        <div class="card-header">
-          <h3>技术偏好</h3>
-          <button @click="openPreferenceModal" class="edit-preferences-btn">
-            编辑偏好
-          </button>
         </div>
+      </el-card>
 
-        <div class="current-preferences">
-          <div v-if="selectedPreferences && Object.keys(selectedPreferences).length > 0">
-            <div v-for="[group, subs] in Object.entries(selectedPreferences)" :key="group" class="preference-group">
-              <h4>{{ group }}</h4>
-              <div class="tags-container">
-                <span v-for="sub in subs" :key="sub" class="tag-item">{{ sub }}</span>
+      <!-- 学习统计卡片 -->
+      <el-row :gutter="20" class="stats-row">
+        <el-col :xs="12" :sm="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon total">
+                <el-icon><Document /></el-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ userStats.total_questions_answered || 0 }}</div>
+                <div class="stat-label">总答题数</div>
               </div>
             </div>
+          </el-card>
+        </el-col>
+
+        <el-col :xs="12" :sm="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon score">
+                <el-icon><TrendCharts /></el-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ userStats.average_score?.toFixed(1) || 0 }}</div>
+                <div class="stat-label">平均分数</div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col :xs="12" :sm="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon time">
+                <el-icon><Clock /></el-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ formatTime(userStats.total_time_spent) }}</div>
+                <div class="stat-label">总用时</div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+
+        <el-col :xs="12" :sm="6">
+          <el-card class="stat-card">
+            <div class="stat-content">
+              <div class="stat-icon favorite">
+                <el-icon><Star /></el-icon>
+              </div>
+              <div class="stat-info">
+                <div class="stat-value">{{ userStats.favorite_count || 0 }}</div>
+                <div class="stat-label">收藏数量</div>
+              </div>
+            </div>
+          </el-card>
+        </el-col>
+      </el-row>
+
+      <!-- 基本信息编辑 -->
+      <el-card class="info-card">
+        <template #header>
+          <div class="card-header">
+            <span>基本信息</span>
+            <el-button type="primary" link @click="editInfoVisible = true">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
           </div>
-          <div v-else class="no-preferences">
-            <p>暂无技术偏好，请点击"编辑偏好"添加</p>
+        </template>
+
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="用户名">{{ user.username }}</el-descriptions-item>
+          <el-descriptions-item label="邮箱">{{ user.email }}</el-descriptions-item>
+          <el-descriptions-item label="注册时间">{{ formatDate(user.date_joined) }}</el-descriptions-item>
+          <el-descriptions-item label="个人简介">
+            {{ user.bio || '暂无简介' }}
+          </el-descriptions-item>
+        </el-descriptions>
+      </el-card>
+
+      <!-- 技术偏好 -->
+      <el-card class="preference-card">
+        <template #header>
+          <div class="card-header">
+            <span>技术偏好</span>
+            <el-button type="primary" link @click="openPreferenceModal">
+              <el-icon><Edit /></el-icon>
+              编辑
+            </el-button>
           </div>
-        </div>
-      </div>
+        </template>
 
-      <!-- 操作区域 -->
-      <div class="action-section">
-        <button @click="logout" :disabled="loggingOut" class="logout-btn">
-          {{ loggingOut ? '退出中...' : '退出登录' }}
-        </button>
-      </div>
-
-      <!-- 提示信息 -->
-      <div v-if="message" class="message success">{{ message }}</div>
-      <div v-if="error" class="message error">{{ error }}</div>
-    </div>
-
-    <!-- 技术偏好编辑弹窗 -->
-    <div v-if="showPreferenceModal" class="modal-overlay" @click="closeModal">
-      <div class="modal-content" @click.stop>
-        <h3>编辑技术偏好</h3>
-        <div class="modal-body">
-          <div
-              v-for="group in preferenceOptions"
-              :key="group.value"
-              class="preference-group"
-          >
-            <h4>{{ group.label }}</h4>
-            <div class="checkbox-grid">
-              <label
-                  v-for="child in group.children"
-                  :key="child.value"
-                  class="checkbox-item"
-              >
-                <input
-                    type="checkbox"
-                    :checked="isSelected(group.value, child.value)"
-                    @change="togglePreference(group.value, child.value)"
-                />
-                {{ child.label }}
-              </label>
+        <div v-if="hasPreferences" class="preferences-content">
+          <div v-for="[group, subs] in Object.entries(selectedPreferences)" :key="group" class="preference-group">
+            <div class="group-label">{{ group }}</div>
+            <div class="tags-container">
+              <el-tag v-for="sub in subs" :key="sub" type="primary" size="small">
+                {{ sub }}
+              </el-tag>
             </div>
           </div>
         </div>
-        <div class="modal-footer">
-          <button @click="savePreferences" class="save-btn">保存</button>
-          <button @click="closeModal" class="cancel-btn">取消</button>
+        <el-empty v-else description="暂无技术偏好" :image-size="100">
+          <el-button type="primary" @click="openPreferenceModal">添加偏好</el-button>
+        </el-empty>
+      </el-card>
+
+      <!-- 快捷操作 -->
+      <el-card class="action-card">
+        <template #header>
+          <span>快捷操作</span>
+        </template>
+
+        <div class="action-buttons">
+          <el-button type="primary" @click="goToAnalytics">
+            <el-icon><DataAnalysis /></el-icon>
+            数据分析
+          </el-button>
+          <el-button type="success" @click="goToLeaderboard">
+            <el-icon><Trophy /></el-icon>
+            排行榜
+          </el-button>
+          <el-button type="warning" @click="goToHistory">
+            <el-icon><Clock /></el-icon>
+            评分历史
+          </el-button>
+          <el-button type="danger" @click="confirmLogout" :loading="loggingOut">
+            <el-icon><SwitchButton /></el-icon>
+            退出登录
+          </el-button>
+        </div>
+      </el-card>
+    </div>
+
+    <!-- 编辑信息弹窗 -->
+    <el-dialog v-model="editInfoVisible" title="编辑基本信息" width="500px">
+      <el-form :model="editForm" label-width="80px">
+        <el-form-item label="用户名">
+          <el-input v-model="editForm.username" disabled />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="editForm.email" disabled />
+        </el-form-item>
+        <el-form-item label="个人简介">
+          <el-input
+            v-model="editForm.bio"
+            type="textarea"
+            :rows="4"
+            placeholder="介绍一下自己吧"
+            maxlength="200"
+            show-word-limit
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editInfoVisible = false">取消</el-button>
+        <el-button type="primary" @click="updateProfile" :loading="updating">
+          保存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 技术偏好编辑弹窗 -->
+    <el-dialog v-model="showPreferenceModal" title="编辑技术偏好" width="700px">
+      <div class="preference-modal">
+        <div v-for="group in preferenceOptions" :key="group.value" class="preference-group">
+          <div class="group-header">
+            <el-checkbox
+              v-model="group.checked"
+              @change="toggleGroup(group)"
+            >
+              {{ group.label }}
+            </el-checkbox>
+          </div>
+          <div v-if="group.checked" class="checkbox-grid">
+            <el-checkbox
+              v-for="child in group.children"
+              :key="child.value"
+              v-model="child.checked"
+              @change="updateTempPreferences"
+            >
+              {{ child.label }}
+            </el-checkbox>
+          </div>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <el-button @click="closeModal">取消</el-button>
+        <el-button type="primary" @click="savePreferences">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import {ref, reactive, onMounted, watch} from 'vue'
-import {useRouter} from 'vue-router'
-import api from '@/api.js'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  Loading,
+  Upload,
+  Document,
+  TrendCharts,
+  Clock,
+  Star,
+  Edit,
+  DataAnalysis,
+  Trophy,
+  SwitchButton
+} from '@element-plus/icons-vue'
+import api from '@/api'
 
 const router = useRouter()
 
@@ -113,518 +245,517 @@ const user = reactive({
   username: '',
   email: '',
   bio: '',
+  avatar: '',
+  date_joined: '',
   preferences: {}
 })
 
-const form = reactive({
-  bio: '',
-  preferences: ''
+const userStats = reactive({
+  total_questions_answered: 0,
+  average_score: 0,
+  total_time_spent: 0,
+  favorite_count: 0
 })
 
-// 二级嵌套标签
+const editForm = reactive({
+  username: '',
+  email: '',
+  bio: ''
+})
+
 const preferenceOptions = ref([
   {
     label: 'Python',
     value: 'Python',
+    checked: false,
     children: [
-      {label: 'Python基础', value: 'Python基础'},
-      {label: 'Python进阶', value: 'Python进阶'},
-      {label: 'Flask专题', value: 'Flask专题'},
-      {label: 'Django专题', value: 'Django专题'},
+      { label: 'Python基础', value: 'Python基础', checked: false },
+      { label: 'Python进阶', value: 'Python进阶', checked: false },
+      { label: 'Flask专题', value: 'Flask专题', checked: false },
+      { label: 'Django专题', value: 'Django专题', checked: false }
     ]
   },
   {
     label: '前端',
     value: '前端',
+    checked: false,
     children: [
-      {label: 'Vue', value: 'Vue'},
-      {label: 'React', value: 'React'},
-      {label: 'JavaScript', value: 'JavaScript'},
+      { label: 'Vue', value: 'Vue', checked: false },
+      { label: 'React', value: 'React', checked: false },
+      { label: 'JavaScript', value: 'JavaScript', checked: false }
     ]
   },
   {
     label: '后端',
     value: '后端',
+    checked: false,
     children: [
-      {label: 'Node.js', value: 'Node.js'},
-      {label: 'Java', value: 'Java'},
-      {label: 'Spring Boot', value: 'Spring Boot'},
+      { label: 'Node.js', value: 'Node.js', checked: false },
+      { label: 'Java', value: 'Java', checked: false },
+      { label: 'Spring Boot', value: 'Spring Boot', checked: false }
     ]
   },
   {
     label: '数据库',
     value: '数据库',
+    checked: false,
     children: [
-      {label: 'MySQL', value: 'MySQL'},
-      {label: 'PostgreSQL', value: 'PostgreSQL'},
-      {label: 'MongoDB', value: 'MongoDB'},
+      { label: 'MySQL', value: 'MySQL', checked: false },
+      { label: 'PostgreSQL', value: 'PostgreSQL', checked: false },
+      { label: 'MongoDB', value: 'MongoDB', checked: false }
     ]
   },
   {
     label: '算法与数据结构',
     value: '算法与数据结构',
+    checked: false,
     children: [
-      {label: '排序算法', value: '排序算法'},
-      {label: '树结构', value: '树结构'},
-      {label: '图论', value: '图论'},
+      { label: '排序算法', value: '排序算法', checked: false },
+      { label: '树结构', value: '树结构', checked: false },
+      { label: '图论', value: '图论', checked: false }
     ]
   }
-]);
+])
 
-const selectedPreferences = ref({});
-const tempSelectedPreferences = ref({}); // 临时存储弹窗中的选择
-const showPreferenceModal = ref(false);
-
-// 监听选择变化，自动转换为JSON格式存储
-watch(selectedPreferences, (newVal) => {
-  form.preferences = JSON.stringify(newVal);
-}, {deep: true});
-
+const selectedPreferences = ref({})
+const tempSelectedPreferences = ref({})
+const showPreferenceModal = ref(false)
+const editInfoVisible = ref(false)
 const loading = ref(true)
 const updating = ref(false)
 const loggingOut = ref(false)
-const message = ref('')
-const error = ref('')
 
-// 检查选项是否被选中
-const isSelected = (group, value) => {
-  const current = tempSelectedPreferences.value[group] || [];
-  return current.includes(value);
-};
+const hasPreferences = computed(() => {
+  return Object.keys(selectedPreferences.value).length > 0
+})
 
-// 获取用户信息
 const fetchProfile = async () => {
+  loading.value = true
   try {
-    const response = await api.get('users/profile/')
+    const response = await api.get('/users/profile/')
     Object.assign(user, response.data)
-    form.bio = response.data.bio || ''
-    // 解析现有的偏好设置，更新选中的复选框
-    const existingPrefs = response.data.preferences || {};
-    selectedPreferences.value = {...existingPrefs};
-    form.preferences = JSON.stringify(selectedPreferences.value);
+    Object.assign(editForm, {
+      username: response.data.username,
+      email: response.data.email,
+      bio: response.data.bio || ''
+    })
+
+    const existingPrefs = response.data.preferences || {}
+    selectedPreferences.value = { ...existingPrefs }
+    initPreferenceOptions()
+
+    try {
+      const statsResponse = await api.get('/analytics/user-stats/')
+      if (statsResponse.data.results && statsResponse.data.results.length > 0) {
+        Object.assign(userStats, statsResponse.data.results[0])
+      }
+    } catch (statsError) {
+      console.warn('获取用户统计失败:', statsError)
+    }
   } catch (err) {
-    console.error('获取用户信息失败：', err)
-
+    console.error('获取用户信息失败:', err)
     if (err.response?.status === 401) {
-      error.value = '登录已过期，请重新登录'
-
+      ElMessage.error('登录已过期，请重新登录')
       localStorage.removeItem('access_token')
       localStorage.removeItem('refresh_token')
-
-      // 延迟跳转，让用户看到错误提示
       setTimeout(() => {
-        router.push('/login');
-      }, 1500);
+        router.push('/login')
+      }, 1500)
     } else {
-      error.value = '获取用户信息失败，请稍后重试'
+      ElMessage.error('获取用户信息失败，请稍后重试')
     }
   } finally {
     loading.value = false
   }
 }
 
-// 打开偏好编辑弹窗
+const initPreferenceOptions = () => {
+  preferenceOptions.value.forEach(group => {
+    const subs = selectedPreferences.value[group.value] || []
+    group.checked = subs.length > 0
+    group.children.forEach(child => {
+      child.checked = subs.includes(child.value)
+    })
+  })
+}
+
 const openPreferenceModal = () => {
-  tempSelectedPreferences.value = JSON.parse(JSON.stringify(selectedPreferences.value || {}));
-  showPreferenceModal.value = true;
-};
+  initPreferenceOptions()
+  tempSelectedPreferences.value = JSON.parse(JSON.stringify(selectedPreferences.value || {}))
+  showPreferenceModal.value = true
+}
 
-// 保存偏好选择
-const savePreferences = () => {
-  selectedPreferences.value = JSON.parse(JSON.stringify(tempSelectedPreferences.value));
-  showPreferenceModal.value = false;
-};
-
-// 关闭弹窗
-const closeModal = () => {
-  tempSelectedPreferences.value = JSON.parse(JSON.stringify(selectedPreferences.value || {}));
-  showPreferenceModal.value = false;
-};
-
-// 切换单个偏好的选中状态
-const togglePreference = (group, value) => {
-  const current = tempSelectedPreferences.value[group] || [];
-  if (current.includes(value)) {
-    tempSelectedPreferences.value[group] = current.filter(v => v !== value);
+const toggleGroup = (group) => {
+  if (group.checked) {
+    group.children.forEach(child => {
+      child.checked = true
+    })
   } else {
-    tempSelectedPreferences.value[group] = [...current, value];
+    group.children.forEach(child => {
+      child.checked = false
+    })
   }
-};
+  updateTempPreferences()
+}
+
+const updateTempPreferences = () => {
+  const prefs = {}
+  preferenceOptions.value.forEach(group => {
+    if (group.checked) {
+      const subs = group.children.filter(child => child.checked).map(child => child.value)
+      if (subs.length > 0) {
+        prefs[group.value] = subs
+      }
+    }
+  })
+  tempSelectedPreferences.value = prefs
+}
+
+const savePreferences = async () => {
+  try {
+    await api.patch('/users/profile/', {
+      preferences: tempSelectedPreferences.value
+    })
+    selectedPreferences.value = { ...tempSelectedPreferences.value }
+    user.preferences = tempSelectedPreferences.value
+    showPreferenceModal.value = false
+    ElMessage.success('技术偏好更新成功')
+  } catch (err) {
+    ElMessage.error('更新失败，请稍后重试')
+  }
+}
+
+const closeModal = () => {
+  showPreferenceModal.value = false
+}
 
 const updateProfile = async () => {
   updating.value = true
-  message.value = ''
-  error.value = ''
-
   try {
-    let preferencesData
-    try {
-      preferencesData = JSON.parse(form.preferences)
-    } catch {
-      throw new Error('偏好格式错误，请输入有效的JSON')
-    }
-
-    await api.patch('users/profile/', {
-      bio: form.bio,
-      preferences: preferencesData
+    await api.patch('/users/profile/', {
+      bio: editForm.bio
     })
-
-    message.value = '个人信息更新成功'
-    user.bio = form.bio
-    user.preferences = preferencesData
+    user.bio = editForm.bio
+    editInfoVisible.value = false
+    ElMessage.success('个人信息更新成功')
   } catch (err) {
-    error.value = err.message || '更新失败，请稍后重试'
+    ElMessage.error('更新失败，请稍后重试')
   } finally {
     updating.value = false
   }
 }
 
+const uploadAvatar = () => {
+  ElMessage.info('头像上传功能开发中...')
+}
+
+const confirmLogout = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要退出登录吗？',
+      '提示',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    await logout()
+  } catch {
+  }
+}
+
 const logout = async () => {
   loggingOut.value = true
-
   try {
-    await api.post('users/logout/')
-    localStorage.removeItem('access_token')
-    localStorage.removeItem('refresh_token')
-    router.push('/login')
+    await api.post('/users/logout/')
   } catch (err) {
-    console.warn('注销请求失败，但已清除本地token', err)
+    console.warn('注销请求失败:', err)
+  } finally {
     localStorage.removeItem('access_token')
     localStorage.removeItem('refresh_token')
     router.push('/login')
-  } finally {
     loggingOut.value = false
   }
 }
 
-// 组件挂载时获取信息
+const goToAnalytics = () => {
+  router.push('/analytics')
+}
+
+const goToLeaderboard = () => {
+  router.push('/leaderboard')
+}
+
+const goToHistory = () => {
+  router.push('/scoring-history')
+}
+
+const formatTime = (seconds) => {
+  if (!seconds) return '0分钟'
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (hours > 0) {
+    return `${hours}小时${minutes}分钟`
+  }
+  return `${minutes}分钟`
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('zh-CN')
+}
+
 onMounted(() => {
   fetchProfile()
-})
-
-// 为模板提供方法访问
-defineExpose({
-  openPreferenceModal,
-  savePreferences,
-  closeModal
 })
 </script>
 
 <style scoped>
-/* 现代极简设计：sans-serif字体、充足空白、平坦无阴影、细边框 */
-/* 蓝色调：主蓝 #409EFF，浅蓝 #E6F7FF，深灰文本 #303133 */
-
 .profile-container {
-  max-width: 800px;
-  margin: 40px auto;
-  padding: 0 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 0;
+  color: #909399;
+}
+
+.loading-container .el-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
 }
 
 .profile-content {
-  display: grid;
-  gap: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.info-card, .preference-card {
-  background-color: #FFFFFF;
-  border: 1px solid #DCDFE6;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.header-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  padding: 20px 0;
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.avatar-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.avatar-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.user-info {
+  flex: 1;
+  color: #fff;
+}
+
+.username {
+  margin: 0 0 10px 0;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.email {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.bio {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.85;
+  line-height: 1.6;
+}
+
+.stats-row {
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  transition: all 0.3s;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.stat-content {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.stat-icon.total {
+  background: #ecf5ff;
+  color: #409eff;
+}
+
+.stat-icon.score {
+  background: #f0f9ff;
+  color: #67c23a;
+}
+
+.stat-icon.time {
+  background: #fdf6ec;
+  color: #e6a23c;
+}
+
+.stat-icon.favorite {
+  background: #fef0f0;
+  color: #f56c6c;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: bold;
+  color: #303133;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #909399;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
 }
 
-.card-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: #303133;
-}
-
-h2 {
-  font-size: 24px;
-  font-weight: normal;
-  color: #303133;
-  margin-bottom: 24px;
-  text-align: center;
-}
-
-h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #303133;
-  margin: 0 0 16px 0;
-}
-
-h4 {
-  font-size: 14px;
-  font-weight: 600;
-  color: #606266;
-  margin: 0 0 8px 0;
-}
-
-.form-group {
+.info-card,
+.preference-card,
+.action-card {
   margin-bottom: 20px;
 }
 
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #606266;
-}
-
-input, textarea {
-  width: 100%;
-  padding: 10px 14px;
-  border: 1px solid #DCDFE6;
-  border-radius: 4px;
-  font-size: 14px;
-  color: #606266;
-  background-color: #FAFAFA;
-  transition: border-color 0.3s ease;
-  box-sizing: border-box;
-}
-
-input:focus, textarea:focus {
-  outline: none;
-  border-color: #409EFF;
-  background-color: #FFFFFF;
-}
-
-input:disabled, .disabled-input {
-  background-color: #F5F7FA;
-  cursor: not-allowed;
-  color: #C0C4CC;
-}
-
-.update-btn, .edit-preferences-btn, .save-btn, .cancel-btn, .logout-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  box-sizing: border-box;
-}
-
-.update-btn, .edit-preferences-btn {
-  background-color: #409EFF;
-  color: #FFFFFF;
-}
-
-.update-btn:hover, .edit-preferences-btn:hover {
-  background-color: #66B1FF;
-}
-
-.update-btn:disabled, .edit-preferences-btn:disabled {
-  background-color: #A0A0A0;
-  cursor: not-allowed;
-}
-
-.current-preferences {
-  margin-top: 16px;
-}
-
-.no-preferences {
-  color: #909399;
-  font-style: italic;
-  padding: 16px 0;
+.preferences-content {
+  padding: 10px 0;
 }
 
 .preference-group {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+}
+
+.group-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #606266;
+  margin-bottom: 10px;
 }
 
 .tags-container {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  margin-left: 20px;
 }
 
-.tag-item {
-  background-color: #ECF5FF;
-  color: #409EFF;
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
-  border: 1px solid #D9ECFF;
-}
-
-.action-section {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-}
-
-.logout-btn {
-  padding: 12px 24px;
-  background-color: #F56C6C;
-  color: #FFFFFF;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.logout-btn:hover {
-  background-color: #F78989;
-}
-
-.logout-btn:disabled {
-  background-color: #F3B4B4;
-  cursor: not-allowed;
-}
-
-.message {
-  padding: 12px;
-  border-radius: 4px;
-  font-size: 14px;
-  text-align: center;
-  margin-top: 16px;
-}
-
-.message.success {
-  background-color: #F0F9EB;
-  color: #67C23A;
-  border: 1px solid #E1F3D8;
-}
-
-.message.error {
-  background-color: #FEF0F0;
-  color: #F56C6C;
-  border: 1px solid #FDE2E2;
-}
-
-/* 弹窗样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: #FFFFFF;
-  width: 600px;
-  max-width: 90vw;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal-content h3 {
-  margin: 0;
-  padding: 16px 24px;
-  background-color: #409EFF;
-  color: #FFFFFF;
-  font-size: 18px;
-}
-
-.modal-body {
-  padding: 20px 24px;
+.preference-modal {
   max-height: 500px;
   overflow-y: auto;
 }
 
-.modal-body::-webkit-scrollbar {
+.preference-modal::-webkit-scrollbar {
   width: 6px;
 }
 
-.modal-body::-webkit-scrollbar-track {
-  background: #F2F6FC;
+.preference-modal::-webkit-scrollbar-track {
+  background: #f2f6fc;
 }
 
-.modal-body::-webkit-scrollbar-thumb {
-  background: #DCDFE6;
+.preference-modal::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
   border-radius: 3px;
+}
+
+.group-header {
+  padding: 10px 0;
+  border-bottom: 1px solid #ebeef5;
+  margin-bottom: 10px;
 }
 
 .checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
-  margin-bottom: 16px;
+  padding: 10px 0 20px 20px;
 }
 
-.checkbox-item {
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.action-buttons .el-button {
+  height: 60px;
   display: flex;
   align-items: center;
-  padding: 8px 0;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+  justify-content: center;
+  gap: 8px;
 }
 
-.checkbox-item:hover {
-  background-color: #F2F6FC;
-}
-
-.checkbox-item input[type="checkbox"] {
-  margin-right: 8px;
-  accent-color: #409EFF;
-}
-
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid #DCDFE6;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  background: #F2F6FC;
-}
-
-.save-btn {
-  background-color: #409EFF;
-  color: #FFFFFF;
-}
-
-.save-btn:hover {
-  background-color: #66B1FF;
-}
-
-.cancel-btn {
-  background-color: #909399;
-  color: #FFFFFF;
-}
-
-.cancel-btn:hover {
-  background-color: #A0A0A0;
-}
-
-/* 响应式调整 */
 @media (max-width: 768px) {
-  .profile-container {
-    margin: 20px auto;
-    padding: 0 15px;
+  .user-header {
+    flex-direction: column;
+    text-align: center;
   }
 
-  .card-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+  .user-info {
+    text-align: center;
+  }
+
+  .stats-row {
+    margin-bottom: 0;
+  }
+
+  .action-buttons {
+    grid-template-columns: 1fr;
   }
 
   .checkbox-grid {
     grid-template-columns: 1fr;
-  }
-
-  .modal-content {
-    width: 95vw;
   }
 }
 </style>

@@ -6,16 +6,24 @@ import QuestionsList from '@/components/QuestionsList.vue'
 import CategoryManager from '@/components/CategoryManager.vue'
 import Practice from "@/components/Practice.vue";
 import PracticeDetail from '@/components/PracticeDetail.vue'
+import Recommendations from '@/components/Recommendations.vue'
+import Analytics from '@/components/Analytics.vue'
+import Leaderboard from '@/components/Leaderboard.vue'
+import ScoringHistory from '@/components/ScoringHistory.vue'
 
 const routes = [
-    {path: '/', redirect: '/profile'},
+    {path: '/', redirect: '/recommendations'},
     {path: '/register', component: Register, meta: {requiresAuth: false}, name: 'Register'},
     {path: '/login', component: Login, meta: {requiresAuth: false}, name: 'Login'},
     {path: '/profile', component: Profile, meta: {requiresAuth: true}, name: 'Profile'},
     {path: '/questions', component: QuestionsList, meta: {requiresAuth: true}, name: 'QuestionsList'},
     {path: '/categories', component: CategoryManager, meta: {requiresAuth: true}, name: 'CategoryManager'},
     {path: '/practice', component: Practice, meta: {requiresAuth: true}, name: 'Practice'},
-    {path: '/practice/:id', component: PracticeDetail, meta: {requiresAuth: true}, name: 'PracticeDetail'}
+    {path: '/practice/:id', component: PracticeDetail, meta: {requiresAuth: true}, name: 'PracticeDetail'},
+    {path: '/recommendations', component: Recommendations, meta: {requiresAuth: true}, name: 'Recommendations'},
+    {path: '/analytics', component: Analytics, meta: {requiresAuth: true}, name: 'Analytics'},
+    {path: '/leaderboard', component: Leaderboard, meta: {requiresAuth: true}, name: 'Leaderboard'},
+    {path: '/scoring-history', component: ScoringHistory, meta: {requiresAuth: true}, name: 'ScoringHistory'}
 ];
 
 const router = createRouter({

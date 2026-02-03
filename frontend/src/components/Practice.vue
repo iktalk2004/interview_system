@@ -1,149 +1,186 @@
 <template>
   <div class="practice-container">
-    <h2>答题练习</h2>
+    <div class="page-header">
+      <div class="header-content">
+        <h1>答题练习</h1>
+        <p>选择题目开始练习，提升你的技能</p>
+      </div>
+      <div class="header-stats">
+        <div class="stat-item">
+          <el-icon class="stat-icon"><Document /></el-icon>
+          <span>{{ total }} 道题目</span>
+        </div>
+        <div class="stat-item">
+          <el-icon class="stat-icon"><Check /></el-icon>
+          <span>{{ completedCount }} 已完成</span>
+        </div>
+      </div>
+    </div>
 
-    <!-- 题目过滤和搜索 -->
-    <el-form :model="filters" inline class="filter-form">
-      <el-form-item label="搜索">
-        <el-input v-model="filters.search" placeholder="标题" clearable @clear="fetchQuestions"/>
-      </el-form-item>
-      <el-form-item label="分类" prop="category">
-        <el-select v-model="filters.category" placeholder="选择分类" clearable style="width: 180px;">
-          <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id"/>
-        </el-select>
-      </el-form-item>
-      <el-form-item label="难度" prop="difficulty">
-        <el-select v-model="filters.difficulty" placeholder="难度" clearable style="width: 180px;">
-          <el-option
+    <el-card class="filter-card">
+      <el-form :model="filters" inline class="filter-form">
+        <el-form-item>
+          <el-input
+            v-model="filters.search"
+            placeholder="搜索题目..."
+            clearable
+            style="width: 240px"
+            @clear="fetchQuestions"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+        <el-form-item>
+          <el-select
+            v-model="filters.category"
+            placeholder="选择分类"
+            clearable
+            style="width: 160px"
+          >
+            <el-option
+              v-for="cat in categories"
+              :key="cat.id"
+              :label="cat.name"
+              :value="cat.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-select
+            v-model="filters.difficulty"
+            placeholder="难度"
+            clearable
+            style="width: 120px"
+          >
+            <el-option
               v-for="(value, key) in difficultyMap"
               :key="key"
               :label="value"
               :value="key"
-          />
-        </el-select>
-      </el-form-item>
-      <el-button type="primary" @click="fetchQuestions">查询</el-button>
-    </el-form>
-
-    <!-- 题目列表表格 -->
-    <el-table :data="questions" v-loading="loading" stripe>
-      <el-table-column prop="title" label="标题" width="300"/>
-      <el-table-column label="难度">
-        <template #default="{ row }">
-          {{ difficultyMap[row.difficulty] || '未知' }}
-        </template>
-      </el-table-column>
-      <el-table-column prop="category.name" label="分类" width="150"/>
-      <el-table-column label="状态" width="150">
-        <template #default="{ row }">
-          <el-tag v-if="getInteractionStatus(row.id)" :type="getInteractionStatus(row.id).type">
-            {{ getInteractionStatus(row.id).text }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="操作" width="100">
-        <template #default="{ row }">
-          <el-button size="small" type="primary" @click="goToPractice(row.id, null)">练习</el-button>
-          <el-button size="small" v-if="getInteractionStatus(row.id)?.canRetry" type="warning"
-                     @click="retryQuestion(row.id)">重新答题
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="fetchQuestions">
+            <el-icon><Search /></el-icon>
+            查询
           </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+          <el-button @click="resetFilters">
+            <el-icon><Refresh /></el-icon>
+            重置
+          </el-button>
+        </el-form-item>
+      </el-form>
+    </el-card>
 
-    <!-- 分页 -->
-    <el-pagination
-        background v-if="total > 0"
-        layout="prev, pager, next, total" :total="total"
-        :page-size="pageSize"
-        :current-page="currentPage"
-        @current-change="handlePageChange"
-        class="pagination"/>
+    <el-card class="questions-card" v-loading="loading">
+      <div v-if="questions.length === 0" class="empty-state">
+        <el-empty description="暂无题目" />
+      </div>
+      <div v-else class="questions-grid">
+        <div
+          v-for="question in questions"
+          :key="question.id"
+          class="question-card"
+          @click="goToPractice(question.id, null)"
+        >
+          <div class="question-header">
+            <el-tag :type="getDifficultyType(question.difficulty)" size="small">
+              {{ difficultyMap[question.difficulty] }}
+            </el-tag>
+            <el-tag v-if="question.category" type="info" size="small">
+              {{ question.category.name }}
+            </el-tag>
+          </div>
+          <div class="question-title">{{ question.title }}</div>
+          <div class="question-footer">
+            <div class="status-badge" :class="getStatusClass(question.id)">
+              <el-icon><CircleCheck /></el-icon>
+              <span>{{ getStatusText(question.id) }}</span>
+            </div>
+            <el-button
+              v-if="getInteractionStatus(question.id)?.canRetry"
+              size="small"
+              type="warning"
+              @click.stop="retryQuestion(question.id)"
+            >
+              <el-icon><RefreshRight /></el-icon>
+              重新答题
+            </el-button>
+          </div>
+        </div>
+      </div>
 
-    <!--    &lt;!&ndash; 历史记录抽屉 &ndash;&gt;-->
-    <!--    <el-drawer v-model="showHistory" title="答题历史记录" direction="rtl" size="50%">-->
-    <!--      <el-table :data="history" v-loading="loadingHistory">-->
-    <!--        <el-table-column prop="question.title" label="题目"/>-->
-    <!--        <el-table-column prop="score" label="评分"/>-->
-    <!--        <el-table-column prop="time_spent" label="时长 (秒)"/>-->
-    <!--        <el-table-column prop="created_at" label="时间" :formatter="formatDate"/>-->
-    <!--        <el-table-column label="操作">-->
-    <!--          <template #default="{ row }">-->
-    <!--            <el-button-->
-    <!--                size="small"-->
-    <!--                @click="goToPractice(row.question?.id, row.id)"-->
-    <!--                :disabled="!row.question?.id"-->
-    <!--            >-->
-    <!--              详情-->
-    <!--            </el-button>-->
-    <!--          </template>-->
-    <!--        </el-table-column>-->
-    <!--      </el-table>-->
-    <!--    </el-drawer>-->
-
-    <!--    &lt;!&ndash; 底部按钮：查看历史 &ndash;&gt;-->
-    <!--    <el-button type="info" class="history-btn" @click="showHistory = true">查看历史记录</el-button>-->
+      <div v-if="total > 0" class="pagination-wrapper">
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          background
+          layout="prev, pager, next, total"
+          @current-change="handlePageChange"
+        />
+      </div>
+    </el-card>
   </div>
 </template>
 
 <script setup>
-import {ref, reactive, onMounted, watch, computed} from 'vue'
-import {useRouter} from 'vue-router'
-import api from '@/api.js'
-import {ElMessage} from 'element-plus'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import {
+  Document,
+  Check,
+  Search,
+  Refresh,
+  CircleCheck,
+  RefreshRight
+} from '@element-plus/icons-vue'
+import api from '@/api'
 
 const router = useRouter()
 
-
-// 题目列表相关
 const questions = ref([])
 const categories = ref([])
 const loading = ref(false)
-const total = ref(0)  // 题目总数
-const pageSize = 10
+const total = ref(0)
+const pageSize = 12
 const currentPage = ref(1)
 
-// 题目过滤参数
 const filters = reactive({
   search: '',
   category: null,
   difficulty: null
 })
 
-// 难度标签映射
-const difficultyMap = {1: '易', 2: '中', 3: '难',}
-
-// 历史记录相关
-const showHistory = ref(false)
-const history = ref([])
-const loadingHistory = ref(false)
-
-// 交互状态缓存
+const difficultyMap = { 1: '易', 2: '中', 3: '难' }
 const interactionStatusCache = ref({})
 
-// 过滤后的分类，排除无效数据
+const completedCount = computed(() => {
+  return Object.values(interactionStatusCache.value).filter(
+    status => status.type === 'success'
+  ).length
+})
+
 const filteredCategories = computed(() => {
   return categories.value.filter(cat => cat && cat.id && cat.name)
 })
 
-// 获取题目列表
 const fetchQuestions = async (page = 1) => {
-  // 确保传递给fetchQuestions的是一个数字
-  const pageNum = typeof page === 'number' ? page : parseInt(page) || 1;
-
+  const pageNum = typeof page === 'number' ? page : parseInt(page) || 1
   loading.value = true
   try {
     const params = {
-      // 构建查询参数
       search: filters.search,
       category: filters.category,
       difficulty: filters.difficulty,
-      page: pageNum,  // 当前页码
-      page_size: pageSize  // 每页数量
+      page: pageNum,
+      page_size: pageSize
     }
-
-    const response = await api.get('questions/questions/', {params})
-
+    const response = await api.get('/questions/questions/', { params })
     questions.value = response.data.results || response.data
     total.value = response.data.count || questions.value.length
     currentPage.value = pageNum
@@ -155,105 +192,89 @@ const fetchQuestions = async (page = 1) => {
   }
 }
 
-// 获取分类
 const fetchCategories = async () => {
   try {
-    const response = await api.get('questions/categories/')
-    // 后端返回id，name，parent 字段
+    const response = await api.get('/questions/categories/')
     categories.value = response.data.results || response.data
   } catch (err) {
     ElMessage.error('获取分类失败')
   }
 }
 
-// 跳转到答题页,传递参数 questionId到答题页
-const goToPractice = (questionId, interactionId) => {
-  router.push({
-    name: 'PracticeDetail',
-    params: {id: questionId},  // 将这里的 id 改为路由中定义的参数名
-    query: {interaction: interactionId}
-  })
-}
-
-// 更新交互状态缓存
 const updateInteractionStatus = async () => {
   try {
     const questionIds = questions.value.map(q => q.id).join(',')
-    const response = await api.get('practice/interactions/', {params: {question__in: questionIds}})
-    console.log(response)
+    const response = await api.get('/practice/interactions/', { params: { question__in: questionIds } })
     interactionStatusCache.value = {}
     response.data.forEach(int => {
       interactionStatusCache.value[int.question] = {
         type: int.score !== null ? 'success' : 'info',
-        text: int.score !== null ? `已完成 (评分: ${int.score})` : '已开始',
-        canRetry: int.score !== null  // 如果已经有评分，允许重新答题
+        text: int.score !== null ? `已完成 (${int.score}分)` : '已开始',
+        canRetry: int.score !== null
       }
     })
-    console.log('更新缓存', interactionStatusCache.value)
   } catch (err) {
     console.warn('状态更新失败')
   }
 }
 
-// 获取题目状态
 const getInteractionStatus = (questionId) => {
-  return interactionStatusCache.value[questionId] || {type: 'primary', text: '未练习'}
+  return interactionStatusCache.value[questionId] || { type: 'primary', text: '未练习' }
 }
 
-// 重新答题
+const getStatusText = (questionId) => {
+  return getInteractionStatus(questionId).text
+}
+
+const getStatusClass = (questionId) => {
+  const status = getInteractionStatus(questionId)
+  return `status-${status.type}`
+}
+
+const getDifficultyType = (difficulty) => {
+  const map = { 1: 'success', 2: 'warning', 3: 'danger' }
+  return map[difficulty] || 'info'
+}
+
+const goToPractice = (questionId, interactionId) => {
+  router.push({
+    name: 'PracticeDetail',
+    params: { id: questionId },
+    query: { interaction: interactionId }
+  })
+}
+
 const retryQuestion = async (questionId) => {
-  // 首先找到对应的interaction
   try {
-    const response = await api.get('practice/interactions/', {params: {question: questionId}});
-    const interactions = Array.isArray(response.data) ? response.data : [];
+    const response = await api.get('/practice/interactions/', { params: { question: questionId } })
+    const interactions = Array.isArray(response.data) ? response.data : []
     if (interactions.length > 0) {
-      const interaction = interactions[0]; // 获取最新的交互记录
+      const interaction = interactions[0]
       if (interaction.id) {
-        // 重置交互状态
-        const resetResponse = await api.post(`practice/interactions/${interaction.id}/reset_interaction/`);
-        ElMessage.success(resetResponse.data.message);
-        // 跳转到练习页面
-        goToPractice(questionId, interaction.id);
+        const resetResponse = await api.post(`/practice/interactions/${interaction.id}/reset_interaction/`)
+        ElMessage.success(resetResponse.data.message)
+        goToPractice(questionId, interaction.id)
       }
     } else {
-      ElMessage.error('找不到答题记录');
+      ElMessage.error('找不到答题记录')
     }
   } catch (err) {
-    console.error('重新答题失败:', err);
-    ElMessage.error(err.response?.data?.message || err.message || '重新答题失败');
+    ElMessage.error(err.response?.data?.message || '重新答题失败')
   }
 }
 
-// 获取历史记录
-const fetchHistory = async () => {
-  loadingHistory.value = true
-  try {
-    const response = await api.get('practice/interactions/history/')
-    history.value = response.data
-  } catch (err) {
-    ElMessage.error('获取历史失败')
-  } finally {
-    loadingHistory.value = false
-  }
+const resetFilters = () => {
+  filters.search = ''
+  filters.category = null
+  filters.difficulty = null
+  fetchQuestions(1)
 }
 
-// 日期格式化
-const formatDate = (row) => {
-  return new Date(row.created_at).toLocaleString()
-}
-
-// 分页处理
 const handlePageChange = (page) => {
   currentPage.value = page
   fetchQuestions(page)
 }
 
-// 监听历史抽屉打开
-watch(showHistory, (val) => {
-  if (val) fetchHistory()
-})
-
-// 初始加载
 onMounted(() => {
   fetchQuestions()
   fetchCategories()
@@ -262,39 +283,170 @@ onMounted(() => {
 
 <style scoped>
 .practice-container {
-  padding: 20px;
-  max-width: 1200px;
+  padding: 24px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 32px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  color: #ffffff;
+}
+
+.header-content h1 {
+  font-size: 32px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.header-content p {
+  font-size: 14px;
+  margin: 0;
+  opacity: 0.9;
+}
+
+.header-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.stat-icon {
+  font-size: 20px;
+}
+
+.filter-card {
+  margin-bottom: 20px;
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
 .filter-form {
-  margin-bottom: 20px;
+  margin: 0;
 }
 
-.pagination {
-  margin-top: 20px;
-  text-align: right;
+.questions-card {
+  border: none;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
 }
 
-.question-content {
-  margin-bottom: 20px;
-  padding: 15px;
-  background: #f9f9f9;
-  border-radius: 8px;
+.empty-state {
+  padding: 60px 0;
 }
 
-.timer {
-  text-align: right;
-  color: #999;
-  margin-bottom: 10px;
+.questions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
-.history-btn {
-  margin-top: 20px;
-}
-
-.loading {
-  text-align: center;
+.question-card {
+  background: #ffffff;
+  border: 1px solid #ebeef5;
+  border-radius: 12px;
   padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.question-card:hover {
+  border-color: #667eea;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+  transform: translateY(-4px);
+}
+
+.question-header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.question-title {
+  font-size: 16px;
+  font-weight: 500;
+  color: #303133;
+  margin-bottom: 16px;
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.question-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.status-success {
+  background: #f0f9ff;
+  color: #67c23a;
+}
+
+.status-info {
+  background: #f4f4f5;
+  color: #909399;
+}
+
+.status-primary {
+  background: #ecf5ff;
+  color: #409eff;
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid #ebeef5;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 16px;
+    padding: 24px;
+  }
+
+  .header-stats {
+    justify-content: center;
+  }
+
+  .questions-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .filter-form {
+    flex-direction: column;
+  }
+
+  .filter-form :deep(.el-form-item) {
+    width: 100%;
+    margin-right: 0;
+  }
 }
 </style>
