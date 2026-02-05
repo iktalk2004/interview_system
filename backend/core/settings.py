@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "recommender",
     "analytics",
     "scoring",
+    "admin_dashboard",
     # 添加jwt
     'rest_framework_simplejwt',
     # 添加django-filter

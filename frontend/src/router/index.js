@@ -10,6 +10,7 @@ import Recommendations from '@/components/Recommendations.vue'
 import Analytics from '@/components/Analytics.vue'
 import Leaderboard from '@/components/Leaderboard.vue'
 import ScoringHistory from '@/components/ScoringHistory.vue'
+import Dashboard from '@/components/Dashboard.vue'
 
 const routes = [
     {path: '/', redirect: '/recommendations'},
@@ -23,7 +24,8 @@ const routes = [
     {path: '/recommendations', component: Recommendations, meta: {requiresAuth: true}, name: 'Recommendations'},
     {path: '/analytics', component: Analytics, meta: {requiresAuth: true}, name: 'Analytics'},
     {path: '/leaderboard', component: Leaderboard, meta: {requiresAuth: true}, name: 'Leaderboard'},
-    {path: '/scoring-history', component: ScoringHistory, meta: {requiresAuth: true}, name: 'ScoringHistory'}
+    {path: '/scoring-history', component: ScoringHistory, meta: {requiresAuth: true}, name: 'ScoringHistory'},
+    {path: '/dashboard', component: Dashboard, meta: {requiresAuth: true, requiresAdmin: true}, name: 'Dashboard'}
 ];
 
 const router = createRouter({
@@ -34,6 +36,9 @@ const router = createRouter({
 // 全局前置守卫
 router.beforeEach((to, from, next) => {
     const isAuthenticated = !!localStorage.getItem('access_token');
+    const userStr = localStorage.getItem('user');
+    const user = userStr ? JSON.parse(userStr) : null;
+    const isAdmin = user && user.is_staff;
 
     if (to.meta.requiresAuth && !isAuthenticated) {
         // 跳转到登录页面, 并带上当前页面的路径，以便登录后返回
@@ -41,6 +46,9 @@ router.beforeEach((to, from, next) => {
             path: '/login',
             query: {redirect: to.fullPath}
         });
+    } else if (to.meta.requiresAdmin && !isAdmin) {
+        // 需要管理员权限但用户不是管理员
+        next('/recommendations');
     } else {
         // 如果已登录有token，正常放行
         next();

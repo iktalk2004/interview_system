@@ -37,6 +37,10 @@
           <el-icon><Clock /></el-icon>
           <span>评分历史</span>
         </router-link>
+        <router-link v-if="isAdmin" to="/dashboard" class="nav-link admin-link">
+          <el-icon><Setting /></el-icon>
+          <span>管理后台</span>
+        </router-link>
       </div>
 
       <div class="nav-actions">
@@ -115,6 +119,10 @@
             <el-icon><Clock /></el-icon>
             <span>评分历史</span>
           </router-link>
+          <router-link v-if="isAdmin" to="/dashboard" class="mobile-nav-link" @click="closeMobileMenu">
+            <el-icon><Setting /></el-icon>
+            <span>管理后台</span>
+          </router-link>
           <router-link v-if="isAuthenticated" to="/profile" class="mobile-nav-link" @click="closeMobileMenu">
             <el-icon><User /></el-icon>
             <span>个人中心</span>
@@ -135,7 +143,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -150,7 +158,8 @@ import {
   User,
   SwitchButton,
   ArrowDown,
-  Menu
+  Menu,
+  Setting
 } from '@element-plus/icons-vue'
 import api from '@/api'
 
@@ -160,6 +169,7 @@ const mobileMenuOpen = ref(false)
 const isAuthenticated = ref(false)
 const userName = ref('')
 const userAvatar = ref('')
+const isAdmin = ref(false)
 
 const checkAuthStatus = () => {
   const token = localStorage.getItem('access_token')
@@ -171,6 +181,7 @@ const checkAuthStatus = () => {
         const data = JSON.parse(userData)
         userName.value = data.username || ''
         userAvatar.value = data.avatar || ''
+        isAdmin.value = data.is_staff || false
       } catch (e) {
         console.error('解析用户数据失败:', e)
       }
@@ -290,6 +301,21 @@ onUnmounted(() => {
   background: #ecf5ff;
   color: #409eff;
   font-weight: 600;
+}
+
+.nav-link.admin-link {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+}
+
+.nav-link.admin-link:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  color: #ffffff;
+}
+
+.nav-link.admin-link.router-link-active {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  color: #ffffff;
 }
 
 .nav-actions {
