@@ -37,6 +37,24 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    # API v1
+    path("api/v1/users/", include("users.urls")),
+    path("api/v1/questions/", include("questions.urls")),
+    path('api/v1/practice/', include('practice.urls')),
+    path('api/v1/recommender/', include('recommender.urls')),
+    path('api/v1/analytics/', include('analytics.urls')),
+    path('api/v1/scoring/', include('scoring.urls')),
+    path('api/v1/admin/', include('admin_dashboard.urls')),
+    path('api/v1/code-questions/', include('code_questions.urls')),
+    # JWT endpoints
+    path("api/v1/token/refresh", TokenRefreshView.as_view(), name="token_refresh"),
+    # API Documentation
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+]
+
+# Legacy API endpoints (deprecated, will be removed in v2)
+urlpatterns += [
     path("api/users/", include("users.urls")),
     path("api/questions/", include("questions.urls")),
     path('api/practice/', include('practice.urls')),
@@ -44,7 +62,5 @@ urlpatterns = [
     path('api/analytics/', include('analytics.urls')),
     path('api/scoring/', include('scoring.urls')),
     path('api/admin/', include('admin_dashboard.urls')),
-    path("api/token/refresh", TokenRefreshView.as_view(), name="token_refresh"),
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    path('api/code-questions/', include('code_questions.urls')),
 ]

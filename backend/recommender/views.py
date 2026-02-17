@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
+from django.core.cache import cache
 from .models import UserSimilarity, QuestionSimilarity, Recommendation, UserPreference
 from .serializers import (
     UserSimilaritySerializer,
@@ -12,6 +13,9 @@ from .serializers import (
 from .algorithms import CollaborativeFiltering
 from practice.models import Interaction
 from questions.models import Question
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class UserSimilarityViewSet(viewsets.ReadOnlyModelViewSet):
@@ -162,6 +166,14 @@ class RecommendationViewSet(viewsets.ModelViewSet):
         n = int(request.query_params.get('n', 10))
         min_similarity = float(request.query_params.get('min_similarity', 0.1))
 
+        # 检查缓存
+        cache_key = f'recommendations_{user.id}_{recommendation_type}_{n}_{min_similarity}'
+        cached_result = cache.get(cache_key)
+
+        if cached_result:
+            logger.info(f"Returning cached recommendations for user {user.id}")
+            return Response(cached_result)
+
         try:
             if recommendation_type == 'user_based':
                 recommendations = CollaborativeFiltering.user_based_recommend(
@@ -197,13 +209,20 @@ class RecommendationViewSet(viewsets.ModelViewSet):
 
             # 返回推荐结果
             serializer = self.get_serializer(saved_recommendations, many=True)
-            return Response({
+            result = {
                 'recommendations': serializer.data,
                 'count': len(saved_recommendations),
                 'type': recommendation_type
-            })
+            }
+
+            # 缓存结果（1小时）
+            cache.set(cache_key, result, timeout=3600)
+
+            logger.info(f"Generated {len(saved_recommendations)} recommendations for user {user.id}")
+            return Response(result)
 
         except Exception as e:
+            logger.error(f"Error generating recommendations for user {user.id}: {e}", exc_info=True)
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

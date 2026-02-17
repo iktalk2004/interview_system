@@ -33,7 +33,7 @@
           <el-card class="stat-card">
             <div class="stat-content">
               <div class="stat-icon score">
-                <el-icon><TrendCharts /></el-icon>
+                <el-icon><DataLine /></el-icon>
               </div>
               <div class="stat-info">
                 <div class="stat-value">{{ userStats.average_score?.toFixed(1) || 0 }}</div>
@@ -174,7 +174,7 @@
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Refresh, Loading, Document, TrendCharts, Clock, Star } from '@element-plus/icons-vue'
+import { Refresh, Loading, Document, DataLine, Clock, Star } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { analyticsAPI } from '@/api'
 

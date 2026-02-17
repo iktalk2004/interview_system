@@ -1,10 +1,14 @@
 from collections import defaultdict
+from typing import List, Tuple, Dict, Optional, Any
 from django.db.models import Avg, Count, Q
 from practice.models import Interaction
 from .models import UserSimilarity, QuestionSimilarity, Recommendation, UserPreference
 from questions.models import Question
 from users.models import User
 import math
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CollaborativeFiltering:
@@ -14,7 +18,11 @@ class CollaborativeFiltering:
     """
 
     @staticmethod
-    def calculate_user_similarity(user_a, user_b, min_common_questions=2):
+    def calculate_user_similarity(
+        user_a: User,
+        user_b: User,
+        min_common_questions: int = 2
+    ) -> float:
         """
         计算两个用户之间的相似度（基于余弦相似度）
 
@@ -25,7 +33,17 @@ class CollaborativeFiltering:
 
         Returns:
             float: 相似度分数 (0-1)
+
+        Raises:
+            ValueError: 当用户参数无效时
+
+        Examples:
+            >>> similarity = CollaborativeFiltering.calculate_user_similarity(user1, user2)
+            >>> print(similarity)
+            0.85
         """
+        logger.info(f"Calculating similarity between user {user_a.id} and {user_b.id}")
+        
         # 获取两个用户的答题记录
         interactions_a = Interaction.objects.filter(
             user=user_a,
@@ -47,6 +65,7 @@ class CollaborativeFiltering:
         common_questions = set(ratings_a.keys()) & set(ratings_b.keys())
 
         if len(common_questions) < min_common_questions:
+            logger.debug(f"Insufficient common questions: {len(common_questions)}")
             return 0.0
 
         # 计算平均评分
@@ -69,6 +88,7 @@ class CollaborativeFiltering:
         denominator = math.sqrt(denominator_a) * math.sqrt(denominator_b)
 
         if denominator == 0:
+            logger.debug("Denominator is zero, returning 0.0")
             return 0.0
 
         similarity = numerator / denominator
@@ -76,10 +96,14 @@ class CollaborativeFiltering:
         # 将相似度映射到 [0, 1] 范围
         similarity = (similarity + 1) / 2
 
+        logger.info(f"Similarity calculated: {similarity:.4f}")
         return similarity
 
     @staticmethod
-    def update_user_similarities(target_user=None, min_common_questions=2):
+    def update_user_similarities(
+        target_user: Optional[User] = None,
+        min_common_questions: int = 2
+    ) -> int:
         """
         更新用户相似度矩阵
 
@@ -90,6 +114,8 @@ class CollaborativeFiltering:
         Returns:
             int: 更新的记录数
         """
+        logger.info(f"Updating user similarities for target_user: {target_user.id if target_user else 'all'}")
+        
         # 获取所有有答题记录的用户
         users_with_interactions = User.objects.filter(
             interaction__isnull=False
@@ -141,7 +167,11 @@ class CollaborativeFiltering:
         return updated_count
 
     @staticmethod
-    def calculate_question_similarity(question_a, question_b, min_common_users=2):
+    def calculate_question_similarity(
+        question_a: Question,
+        question_b: Question,
+        min_common_users: int = 2
+    ) -> float:
         """
         计算两个题目之间的相似度（基于用户评分）
 
@@ -153,6 +183,8 @@ class CollaborativeFiltering:
         Returns:
             float: 相似度分数 (0-1)
         """
+        logger.info(f"Calculating similarity between question {question_a.id} and {question_b.id}")
+        
         # 获取两个题目的答题记录
         interactions_a = Interaction.objects.filter(
             question=question_a,
@@ -174,6 +206,7 @@ class CollaborativeFiltering:
         common_users = set(ratings_a.keys()) & set(ratings_b.keys())
 
         if len(common_users) < min_common_users:
+            logger.debug(f"Insufficient common users: {len(common_users)}")
             return 0.0
 
         # 计算平均评分
@@ -206,7 +239,10 @@ class CollaborativeFiltering:
         return similarity
 
     @staticmethod
-    def update_question_similarities(target_question=None, min_common_users=2):
+    def update_question_similarities(
+        target_question: Optional[Question] = None,
+        min_common_users: int = 2
+    ) -> int:
         """
         更新题目相似度矩阵
 
@@ -217,6 +253,8 @@ class CollaborativeFiltering:
         Returns:
             int: 更新的记录数
         """
+        logger.info(f"Updating question similarities for target_question: {target_question.id if target_question else 'all'}")
+        
         # 获取所有有答题记录的题目
         questions_with_interactions = Question.objects.filter(
             interaction__isnull=False,
@@ -266,10 +304,15 @@ class CollaborativeFiltering:
                 )
                 updated_count += 1
 
+        logger.info(f"Updated {updated_count} question similarities")
         return updated_count
 
     @staticmethod
-    def user_based_recommend(user, n=10, min_similarity=0.1):
+    def user_based_recommend(
+        user: User,
+        n: int = 10,
+        min_similarity: float = 0.1
+    ) -> List[Tuple[Question, float, str]]:
         """
         基于用户的协同过滤推荐
 
@@ -281,6 +324,8 @@ class CollaborativeFiltering:
         Returns:
             list: 推荐的题目列表 [(question, score, reason), ...]
         """
+        logger.info(f"Generating user-based recommendations for user {user.id}")
+        
         # 获取用户已答题目
         answered_questions = set(
             Interaction.objects.filter(
@@ -307,8 +352,8 @@ class CollaborativeFiltering:
                 user=similar_user,
                 score__isnull=False,
                 is_submitted=True,
-                score__gte=60  # 只推荐相似用户答得好的题目
-            ).exclude(question_id__in=answered_questions)
+                score__gte=60
+            ).exclude(question_id__in=answered_questions).select_related('question')
 
             for interaction in similar_user_interactions:
                 question_id = interaction.question_id
@@ -339,7 +384,11 @@ class CollaborativeFiltering:
         return result
 
     @staticmethod
-    def item_based_recommend(user, n=10, min_similarity=0.1):
+    def item_based_recommend(
+        user: User,
+        n: int = 10,
+        min_similarity: float = 0.1
+    ) -> List[Tuple[Question, float, str]]:
         """
         基于物品的协同过滤推荐
 
@@ -351,6 +400,8 @@ class CollaborativeFiltering:
         Returns:
             list: 推荐的题目列表 [(question, score, reason), ...]
         """
+        logger.info(f"Generating item-based recommendations for user {user.id}")
+        
         # 获取用户已答题目及评分
         user_interactions = Interaction.objects.filter(
             user=user,
@@ -401,10 +452,16 @@ class CollaborativeFiltering:
             reason = "、".join(reasons[question_id])
             result.append((question, score, reason))
 
+        logger.info(f"Generated {len(result)} item-based recommendations")
         return result
 
     @staticmethod
-    def hybrid_recommend(user, n=10, user_weight=0.5, item_weight=0.5):
+    def hybrid_recommend(
+        user: User,
+        n: int = 10,
+        user_weight: float = 0.5,
+        item_weight: float = 0.5
+    ) -> List[Tuple[Question, float, str]]:
         """
         混合推荐算法（结合基于用户和基于物品的推荐）
 
@@ -417,6 +474,8 @@ class CollaborativeFiltering:
         Returns:
             list: 推荐的题目列表 [(question, score, reason), ...]
         """
+        logger.info(f"Generating hybrid recommendations for user {user.id}")
+        
         # 获取两种推荐结果
         user_based = CollaborativeFiltering.user_based_recommend(user, n * 2)
         item_based = CollaborativeFiltering.item_based_recommend(user, n * 2)

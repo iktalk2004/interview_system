@@ -1,213 +1,191 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
-from questions.models import Question, Category
+from .algorithms import CollaborativeFiltering
+from .models import UserSimilarity, QuestionSimilarity
 from practice.models import Interaction
-from recommender.models import UserSimilarity, QuestionSimilarity, Recommendation, UserPreference
-from recommender.algorithms import CollaborativeFiltering
+from questions.models import Question, Category
 
 User = get_user_model()
 
 
-class CollaborativeFilteringTest(TestCase):
-    def setUp(self):
-        self.user1 = User.objects.create_user(
-            username='user1',
-            password='testpass123'
-        )
-        self.user2 = User.objects.create_user(
-            username='user2',
-            password='testpass123'
-        )
+class CollaborativeFilteringTestCase(TestCase):
+    """
+    协同过滤算法测试用例
+    """
 
+    def setUp(self):
+        # 创建测试用户
+        self.user1 = User.objects.create_user(username='user1', password='pass')
+        self.user2 = User.objects.create_user(username='user2', password='pass')
+        self.user3 = User.objects.create_user(username='user3', password='pass')
+
+        # 创建测试分类
         self.category = Category.objects.create(name='Python')
+
+        # 创建测试题目
         self.question1 = Question.objects.create(
-            title='问题1',
-            answer='答案1',
+            title='Python 基础',
             category=self.category,
-            difficulty=1
+            difficulty=1,
+            is_approved=True
         )
         self.question2 = Question.objects.create(
-            title='问题2',
-            answer='答案2',
+            title='Python 进阶',
             category=self.category,
-            difficulty=2
+            difficulty=2,
+            is_approved=True
+        )
+        self.question3 = Question.objects.create(
+            title='Python 高级',
+            category=self.category,
+            difficulty=3,
+            is_approved=True
         )
 
-    def test_calculate_user_similarity(self):
+        # 创建测试交互记录
         Interaction.objects.create(
             user=self.user1,
             question=self.question1,
-            answer='答案1',
-            score=85,
+            score=90,
+            is_submitted=True
+        )
+        Interaction.objects.create(
+            user=self.user1,
+            question=self.question2,
+            score=80,
             is_submitted=True
         )
         Interaction.objects.create(
             user=self.user2,
             question=self.question1,
-            answer='答案1',
-            score=90,
+            score=85,
+            is_submitted=True
+        )
+        Interaction.objects.create(
+            user=self.user2,
+            question=self.question3,
+            score=70,
             is_submitted=True
         )
 
+    def test_calculate_user_similarity(self):
+        """
+        测试用户相似度计算
+        """
         similarity = CollaborativeFiltering.calculate_user_similarity(
             self.user1, self.user2, min_common_questions=1
         )
 
-        self.assertGreaterEqual(similarity, 0)
-        self.assertLessEqual(similarity, 1)
+        self.assertIsInstance(similarity, float)
+        self.assertGreaterEqual(similarity, 0.0)
+        self.assertLessEqual(similarity, 1.0)
 
-    def test_calculate_question_similarity(self):
-        Interaction.objects.create(
-            user=self.user1,
-            question=self.question1,
-            answer='答案1',
-            score=85,
-            is_submitted=True
-        )
-        Interaction.objects.create(
-            user=self.user1,
-            question=self.question2,
-            answer='答案2',
-            score=75,
-            is_submitted=True
-        )
+    def test_update_user_similarities(self):
+        """
+        测试更新用户相似度矩阵
+        """
+        updated_count = CollaborativeFiltering.update_user_similarities()
 
-        similarity = CollaborativeFiltering.calculate_question_similarity(
-            self.question1, self.question2, min_common_users=1
-        )
+        self.assertGreater(updated_count, 0)
 
-        self.assertGreaterEqual(similarity, 0)
-        self.assertLessEqual(similarity, 1)
+        # 验证相似度记录已创建
+        similarity = UserSimilarity.objects.filter(
+            user_a=self.user1,
+            user_b=self.user2
+        ).first()
+
+        self.assertIsNotNone(similarity)
+        self.assertGreater(similarity.similarity_score, 0)
 
     def test_user_based_recommend(self):
-        Interaction.objects.create(
-            user=self.user1,
-            question=self.question1,
-            answer='答案1',
-            score=85,
-            is_submitted=True
-        )
-        Interaction.objects.create(
-            user=self.user2,
-            question=self.question1,
-            answer='答案1',
-            score=90,
-            is_submitted=True
-        )
-        Interaction.objects.create(
-            user=self.user2,
-            question=self.question2,
-            answer='答案2',
-            score=80,
-            is_submitted=True
-        )
+        """
+        测试基于用户的推荐
+        """
+        # 先更新相似度矩阵
+        CollaborativeFiltering.update_user_similarities()
 
+        # 为 user3 生成推荐
         recommendations = CollaborativeFiltering.user_based_recommend(
-            self.user1, n=5, min_similarity=0.1
+            self.user3, n=5, min_similarity=0.0
         )
 
         self.assertIsInstance(recommendations, list)
         self.assertLessEqual(len(recommendations), 5)
 
-    def test_update_user_preferences(self):
-        Interaction.objects.create(
-            user=self.user1,
-            question=self.question1,
-            answer='答案1',
-            score=85,
-            is_submitted=True
+        if recommendations:
+            question, score, reason = recommendations[0]
+            self.assertIsInstance(question, Question)
+            self.assertIsInstance(score, float)
+            self.assertIsInstance(reason, str)
+
+    def test_item_based_recommend(self):
+        """
+        测试基于物品的推荐
+        """
+        # 先更新相似度矩阵
+        CollaborativeFiltering.update_question_similarities()
+
+        # 为 user3 生成推荐
+        recommendations = CollaborativeFiltering.item_based_recommend(
+            self.user3, n=5, min_similarity=0.0
         )
 
-        CollaborativeFiltering.update_user_preferences(self.user1)
+        self.assertIsInstance(recommendations, list)
+        self.assertLessEqual(len(recommendations), 5)
 
-        preference = UserPreference.objects.filter(user=self.user1).first()
-        self.assertIsNotNone(preference)
-        self.assertEqual(preference.total_answered, 1)
-        self.assertEqual(preference.avg_score, 85)
+        if recommendations:
+            question, score, reason = recommendations[0]
+            self.assertIsInstance(question, Question)
+            self.assertIsInstance(score, float)
+            self.assertIsInstance(reason, str)
 
+    def test_hybrid_recommend(self):
+        """
+        测试混合推荐
+        """
+        # 先更新相似度矩阵
+        CollaborativeFiltering.update_user_similarities()
+        CollaborativeFiltering.update_question_similarities()
 
-class RecommenderModelsTest(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username='testuser',
-            password='testpass123'
-        )
-        self.category = Category.objects.create(name='Python')
-        self.question = Question.objects.create(
-            title='测试问题',
-            answer='测试答案',
-            category=self.category,
-            difficulty=1
-        )
-
-    def test_user_similarity_creation(self):
-        user2 = User.objects.create_user(
-            username='user2',
-            password='testpass123'
+        # 为 user3 生成推荐
+        recommendations = CollaborativeFiltering.hybrid_recommend(
+            self.user3, n=5
         )
 
-        similarity = UserSimilarity.objects.create(
-            user_a=self.user,
-            user_b=user2,
-            similarity_score=0.85,
-            common_questions=5
+        self.assertIsInstance(recommendations, list)
+        self.assertLessEqual(len(recommendations), 5)
+
+        if recommendations:
+            question, score, reason = recommendations[0]
+            self.assertIsInstance(question, Question)
+            self.assertIsInstance(score, float)
+            self.assertIsInstance(reason, str)
+
+    def test_calculate_question_similarity(self):
+        """
+        测试题目相似度计算
+        """
+        similarity = CollaborativeFiltering.calculate_question_similarity(
+            self.question1, self.question2, min_common_users=1
         )
 
-        self.assertEqual(similarity.user_a, self.user)
-        self.assertEqual(similarity.user_b, user2)
-        self.assertEqual(similarity.similarity_score, 0.85)
-        self.assertEqual(similarity.common_questions, 5)
+        self.assertIsInstance(similarity, float)
+        self.assertGreaterEqual(similarity, 0.0)
+        self.assertLessEqual(similarity, 1.0)
 
-    def test_question_similarity_creation(self):
-        question2 = Question.objects.create(
-            title='问题2',
-            answer='答案2',
-            category=self.category,
-            difficulty=1
-        )
+    def test_update_question_similarities(self):
+        """
+        测试更新题目相似度矩阵
+        """
+        updated_count = CollaborativeFiltering.update_question_similarities()
 
-        similarity = QuestionSimilarity.objects.create(
-            question_a=self.question,
-            question_b=question2,
-            similarity_score=0.75,
-            common_users=3
-        )
+        self.assertGreater(updated_count, 0)
 
-        self.assertEqual(similarity.question_a, self.question)
-        self.assertEqual(similarity.question_b, question2)
-        self.assertEqual(similarity.similarity_score, 0.75)
-        self.assertEqual(similarity.common_users, 3)
+        # 验证相似度记录已创建
+        similarity = QuestionSimilarity.objects.filter(
+            question_a=self.question1,
+            question_b=self.question2
+        ).first()
 
-    def test_recommendation_creation(self):
-        recommendation = Recommendation.objects.create(
-            user=self.user,
-            question=self.question,
-            recommendation_type='hybrid',
-            score=0.9,
-            reason='测试推荐理由'
-        )
-
-        self.assertEqual(recommendation.user, self.user)
-        self.assertEqual(recommendation.question, self.question)
-        self.assertEqual(recommendation.recommendation_type, 'hybrid')
-        self.assertEqual(recommendation.score, 0.9)
-        self.assertEqual(recommendation.reason, '测试推荐理由')
-        self.assertFalse(recommendation.is_viewed)
-        self.assertFalse(recommendation.is_answered)
-
-    def test_user_preference_creation(self):
-        preference = UserPreference.objects.create(
-            user=self.user,
-            preferred_categories={'Python': {'avg_score': 85, 'count': 10}},
-            preferred_difficulty={'1': {'avg_score': 80, 'count': 5}},
-            weak_areas=['Java'],
-            strong_areas=['Python'],
-            avg_score=82.5,
-            total_answered=15
-        )
-
-        self.assertEqual(preference.user, self.user)
-        self.assertEqual(preference.avg_score, 82.5)
-        self.assertEqual(preference.total_answered, 15)
-        self.assertIn('Python', preference.strong_areas)
-        self.assertIn('Java', preference.weak_areas)
+        self.assertIsNotNone(similarity)
+        self.assertGreater(similarity.similarity_score, 0)

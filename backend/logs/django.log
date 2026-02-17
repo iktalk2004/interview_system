@@ -1,0 +1,88 @@
+INFO 2026-02-17 17:27:17,637 autoreload 8464 2172 Watching for file changes with StatReloader
+INFO 2026-02-17 17:27:23,583 SentenceTransformer 8464 2172 Use pytorch device_name: cpu
+INFO 2026-02-17 17:27:23,583 SentenceTransformer 8464 2172 Load pretrained SentenceTransformer: DMetaSoul/sbert-chinese-general-v2
+INFO 2026-02-17 17:27:33,983 basehttp 8464 8048 "OPTIONS /api/v1/recommender/recommendations/generate_recommendations/?type=hybrid&n=10&min_similarity=0.1 HTTP/1.1" 200 0
+ERROR 2026-02-17 17:27:34,004 exceptions 8464 8048 API Error: {'detail': ErrorDetail(string='Given token not valid for any token type', code='token_not_valid'), 'code': ErrorDetail(string='token_not_valid', code='token_not_valid'), 'messages': [{'token_class': ErrorDetail(string='AccessToken', code='token_not_valid'), 'token_type': ErrorDetail(string='access', code='token_not_valid'), 'message': ErrorDetail(string='Token is invalid', code='token_not_valid')}]}
+WARNING 2026-02-17 17:27:34,007 log 8464 8048 Unauthorized: /api/v1/recommender/recommendations/generate_recommendations/
+WARNING 2026-02-17 17:27:34,009 basehttp 8464 8048 "GET /api/v1/recommender/recommendations/generate_recommendations/?type=hybrid&n=10&min_similarity=0.1 HTTP/1.1" 401 620
+INFO 2026-02-17 17:27:34,023 basehttp 8464 8048 "OPTIONS /api/v1/token/refresh HTTP/1.1" 200 0
+ERROR 2026-02-17 17:27:34,032 exceptions 8464 8048 API Error: {'detail': ErrorDetail(string='Token is invalid', code='token_not_valid'), 'code': ErrorDetail(string='token_not_valid', code='token_not_valid')}
+WARNING 2026-02-17 17:27:34,033 log 8464 8048 Unauthorized: /api/v1/token/refresh
+WARNING 2026-02-17 17:27:34,034 basehttp 8464 8048 "POST /api/v1/token/refresh HTTP/1.1" 401 245
+INFO 2026-02-17 17:27:49,903 basehttp 8464 8048 "OPTIONS /api/v1/users/login/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:27:50,445 basehttp 8464 8048 "POST /api/v1/users/login/ HTTP/1.1" 200 1016
+INFO 2026-02-17 17:27:50,517 algorithms 8464 8048 Generating hybrid recommendations for user 37
+INFO 2026-02-17 17:27:50,518 algorithms 8464 8048 Generating user-based recommendations for user 37
+INFO 2026-02-17 17:27:50,544 algorithms 8464 8048 Generating item-based recommendations for user 37
+INFO 2026-02-17 17:27:50,554 algorithms 8464 8048 Generated 4 item-based recommendations
+INFO 2026-02-17 17:27:50,642 views 8464 8048 Generated 10 recommendations for user 37
+INFO 2026-02-17 17:27:50,644 basehttp 8464 8048 "GET /api/v1/recommender/recommendations/generate_recommendations/?type=hybrid&n=10&min_similarity=0.1 HTTP/1.1" 200 7531
+INFO 2026-02-17 17:28:13,116 basehttp 8464 19788 "OPTIONS /api/v1/questions/categories/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:13,116 basehttp 8464 8048 "OPTIONS /api/v1/questions/questions/?search=&page=1&page_size=12 HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:13,138 basehttp 8464 8048 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:28:13,151 basehttp 8464 19788 "GET /api/v1/questions/questions/?search=&page=1&page_size=12 HTTP/1.1" 200 8905
+INFO 2026-02-17 17:28:13,173 basehttp 8464 19788 "OPTIONS /api/v1/practice/interactions/?question__in=1,2,3,4,5,6,7,8,9,10,11,12 HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:13,188 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question__in=1,2,3,4,5,6,7,8,9,10,11,12 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:15,641 basehttp 8464 19788 "OPTIONS /api/v1/analytics/dashboard/overview/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:15,664 basehttp 8464 19788 "GET /api/v1/analytics/dashboard/overview/ HTTP/1.1" 200 917
+INFO 2026-02-17 17:28:17,074 basehttp 8464 19788 "OPTIONS /api/v1/analytics/dashboard/leaderboard/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:17,086 basehttp 8464 19788 "GET /api/v1/analytics/dashboard/leaderboard/ HTTP/1.1" 200 37
+INFO 2026-02-17 17:28:17,981 basehttp 8464 19788 "OPTIONS /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:17,994 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:20,366 basehttp 8464 8048 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:28:20,376 basehttp 8464 19788 "GET /api/v1/questions/questions/?search=&page=1&page_size=12 HTTP/1.1" 200 8905
+INFO 2026-02-17 17:28:20,406 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question__in=1,2,3,4,5,6,7,8,9,10,11,12 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:21,596 basehttp 8464 19788 "OPTIONS /api/v1/questions/questions/1/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:21,610 basehttp 8464 19788 "GET /api/v1/questions/questions/1/ HTTP/1.1" 200 785
+INFO 2026-02-17 17:28:21,617 basehttp 8464 19788 "OPTIONS /api/v1/practice/interactions/?question=1 HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:21,627 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question=1 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:32,488 basehttp 8464 19788 "OPTIONS /api/v1/practice/interactions/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:32,538 basehttp 8464 19788 "POST /api/v1/practice/interactions/ HTTP/1.1" 201 981
+INFO 2026-02-17 17:28:32,549 basehttp 8464 19788 "OPTIONS /api/v1/practice/interactions/325/embedding_score/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:32,590 basehttp 8464 19788 "POST /api/v1/practice/interactions/325/embedding_score/ HTTP/1.1" 200 60
+INFO 2026-02-17 17:28:32,612 basehttp 8464 19788 "OPTIONS /api/v1/practice/interactions/325/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:32,655 basehttp 8464 19788 "PATCH /api/v1/practice/interactions/325/ HTTP/1.1" 200 980
+INFO 2026-02-17 17:28:38,602 basehttp 8464 19788 "OPTIONS /api/v1/practice/interactions/325/favorite/ HTTP/1.1" 200 0
+INFO 2026-02-17 17:28:38,636 basehttp 8464 19788 "POST /api/v1/practice/interactions/325/favorite/ HTTP/1.1" 200 20
+INFO 2026-02-17 17:28:43,956 views 8464 19788 Returning cached recommendations for user 37
+INFO 2026-02-17 17:28:43,958 basehttp 8464 19788 "GET /api/v1/recommender/recommendations/generate_recommendations/?type=hybrid&n=10&min_similarity=0.1 HTTP/1.1" 200 7531
+INFO 2026-02-17 17:28:47,599 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:48,997 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:50,515 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:50,911 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:51,089 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:51,292 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:52,138 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:52,764 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:52,939 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:53,116 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:53,682 basehttp 8464 19788 "GET /api/v1/analytics/dashboard/leaderboard/ HTTP/1.1" 200 37
+INFO 2026-02-17 17:28:55,069 basehttp 8464 19788 "GET /api/v1/analytics/dashboard/overview/ HTTP/1.1" 200 1581
+INFO 2026-02-17 17:28:57,859 basehttp 8464 19788 "GET /api/v1/analytics/dashboard/overview/ HTTP/1.1" 200 1581
+INFO 2026-02-17 17:28:58,408 basehttp 8464 19788 "GET /api/v1/scoring/scoring/get_latest_scores/?limit=50 HTTP/1.1" 200 2
+INFO 2026-02-17 17:28:59,180 basehttp 8464 19788 "GET /api/v1/analytics/dashboard/overview/ HTTP/1.1" 200 1581
+INFO 2026-02-17 17:29:10,834 basehttp 8464 8048 "OPTIONS /api/v1/questions/questions/?search=&page=1&page_size=10 HTTP/1.1" 200 0
+INFO 2026-02-17 17:29:10,841 basehttp 8464 19788 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:29:10,859 basehttp 8464 19788 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:29:10,865 basehttp 8464 8048 "GET /api/v1/questions/questions/?search=&page=1&page_size=10 HTTP/1.1" 200 7885
+INFO 2026-02-17 17:29:13,576 basehttp 8464 8048 "OPTIONS /api/v1/code-questions/questions/?page=1&page_size=20 HTTP/1.1" 200 0
+INFO 2026-02-17 17:29:13,590 basehttp 8464 8048 "GET /api/v1/code-questions/questions/?page=1&page_size=20 HTTP/1.1" 200 1048
+INFO 2026-02-17 17:29:14,735 basehttp 8464 8048 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:29:14,747 basehttp 8464 20176 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:29:14,747 basehttp 8464 19788 "GET /api/v1/questions/questions/?search=&page=1&page_size=10 HTTP/1.1" 200 7885
+INFO 2026-02-17 17:29:15,694 basehttp 8464 19788 "GET /api/v1/code-questions/questions/?page=1&page_size=20 HTTP/1.1" 200 1048
+INFO 2026-02-17 17:29:16,412 basehttp 8464 20176 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:29:16,423 basehttp 8464 19788 "GET /api/v1/questions/questions/?search=&page=1&page_size=12 HTTP/1.1" 200 8905
+INFO 2026-02-17 17:29:16,461 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question__in=1,2,3,4,5,6,7,8,9,10,11,12 HTTP/1.1" 200 981
+INFO 2026-02-17 17:29:17,063 basehttp 8464 19788 "GET /api/v1/code-questions/questions/?page=1&page_size=20 HTTP/1.1" 200 1048
+INFO 2026-02-17 17:29:17,404 basehttp 8464 20176 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:29:17,413 basehttp 8464 19788 "GET /api/v1/questions/questions/?search=&page=1&page_size=12 HTTP/1.1" 200 8905
+INFO 2026-02-17 17:29:17,443 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question__in=1,2,3,4,5,6,7,8,9,10,11,12 HTTP/1.1" 200 981
+INFO 2026-02-17 17:29:19,455 basehttp 8464 19788 "GET /api/v1/questions/questions/1/ HTTP/1.1" 200 785
+INFO 2026-02-17 17:29:19,473 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question=1 HTTP/1.1" 200 981
+INFO 2026-02-17 17:29:22,515 basehttp 8464 19788 "PATCH /api/v1/practice/interactions/325/ HTTP/1.1" 200 977
+INFO 2026-02-17 17:29:24,052 basehttp 8464 20176 "GET /api/v1/questions/categories/ HTTP/1.1" 200 1470
+INFO 2026-02-17 17:29:24,061 basehttp 8464 19788 "GET /api/v1/questions/questions/?search=&page=1&page_size=12 HTTP/1.1" 200 8905
+INFO 2026-02-17 17:29:24,089 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question__in=1,2,3,4,5,6,7,8,9,10,11,12 HTTP/1.1" 200 979
+INFO 2026-02-17 17:29:25,131 views 8464 19788 Returning cached recommendations for user 37
+INFO 2026-02-17 17:29:25,132 basehttp 8464 19788 "GET /api/v1/recommender/recommendations/generate_recommendations/?type=hybrid&n=10&min_similarity=0.1 HTTP/1.1" 200 7531

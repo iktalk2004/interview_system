@@ -5,12 +5,44 @@ from .models import ScoringHistory
 from .serializers import ScoringHistorySerializer
 from practice.models import Interaction
 from questions.models import Question
-from sentence_transformers import SentenceTransformer, util
 from django.core.cache import cache
 import math
 import re
 import requests
 import os
+
+# 全局模型缓存（避免重复加载）
+_embedding_model = None
+_model_load_error = None
+
+DISABLE_LLM_SCORING = os.getenv('DISABLE_LLM_SCORING', 'False').lower() == 'true'
+
+def get_embedding_model():
+    """
+    获取嵌入模型（懒加载）
+    """
+    global _embedding_model, _model_load_error
+    
+    # 如果已经加载过，直接返回
+    if _embedding_model is not None:
+        return _embedding_model
+    
+    # 如果之前加载失败，返回错误
+    if _model_load_error is not None:
+        raise Exception(_model_load_error)
+    
+    # 如果禁用了智能评分，返回 None
+    if DISABLE_LLM_SCORING:
+        return None
+    
+    try:
+        from sentence_transformers import SentenceTransformer
+        model = SentenceTransformer('DMetaSoul/sbert-chinese-general-v2')
+        _embedding_model = model
+        return model
+    except Exception as e:
+        _model_load_error = str(e)
+        raise Exception(f"模型加载失败: {str(e)}。请检查网络连接或配置代理。")
 
 
 class ScoringViewSet(viewsets.ModelViewSet):
@@ -44,6 +76,14 @@ class ScoringViewSet(viewsets.ModelViewSet):
         """
         使用嵌入模型计算分数
         """
+        # 检查是否禁用了智能评分
+        if DISABLE_LLM_SCORING:
+            return Response({
+                'error': '智能评分功能已禁用。如需启用，请在 .env 文件中设置 DISABLE_LLM_SCORING=False',
+                'score': 0,
+                'disabled': True
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
         scoring_history = self.get_object()
         interaction = scoring_history.interaction
 
@@ -55,8 +95,16 @@ class ScoringViewSet(viewsets.ModelViewSet):
             return Response({'error': '该题目无标准答案'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            # 全局加载模型（节省资源）
-            model = SentenceTransformer('DMetaSoul/sbert-chinese-general-v2')
+            # 获取模型（懒加载）
+            model = get_embedding_model()
+            if model is None:
+                return Response({
+                    'error': '智能评分功能已禁用',
+                    'score': 0,
+                    'disabled': True
+                }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+            from sentence_transformers import util
 
             # 增强预处理：去除标点、规范化空格、转小写（处理中文/英文混杂）
             def preprocess(text):
