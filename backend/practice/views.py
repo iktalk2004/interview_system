@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
 from .models import Interaction
 from .serializers import InteractionSerializer
 from questions.models import Question
@@ -18,6 +19,12 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from scoring.models import ScoringHistory
 
+
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 # 全局加载模型（节省资源）
 model = SentenceTransformer(
     'DMetaSoul/sbert-chinese-general-v2')  # 轻量级英文模型；如需中文，用 'paraphrase-multilingual-MiniLM-L12-v2'
@@ -26,8 +33,11 @@ model = SentenceTransformer(
 class InteractionViewSet(viewsets.ModelViewSet):
     serializer_class = InteractionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = StandardResultsSetPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['question']  # 允许按题目过滤
+    filterset_fields = ['question']
+    search_fields = ['answer']
+    ordering_fields = ['created_at', 'score', '-created_at', '-score']  # 允许按题目过滤
 
     def get_queryset(self):
         queryset = Interaction.objects.filter(user=self.request.user)
@@ -54,8 +64,12 @@ class InteractionViewSet(viewsets.ModelViewSet):
     )
     @action(detail=False, methods=['get'])
     def history(self, request):
-        interactions = self.get_queryset().order_by('-created_at')
-        return Response(self.get_serializer(interactions, many=True).data)
+        page = self.paginate_queryset(self.get_queryset().order_by('-created_at'))
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(self.get_queryset().order_by('-created_at'), many=True)
+        return Response(serializer.data)
 
     @swagger_auto_schema(
         operation_description="收藏或取消收藏题目",

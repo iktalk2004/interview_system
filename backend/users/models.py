@@ -2,25 +2,51 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser, Group, Permission
 
 
+def user_avatar_upload_path(instance, filename):
+    """
+    生成用户头像上传路径
+    """
+    return f'avatars/user_{instance.id}/{filename}'
+
+
 class User(AbstractUser):
-    preferences = models.JSONField(default=dict, blank=True)  # 用户偏好标签
-    bio = models.TextField(blank=True, null=True)  # 用户简介
+    preferences = models.JSONField(default=dict, blank=True)
+    bio = models.TextField(blank=True, null=True)
+    avatar = models.ImageField(
+        upload_to=user_avatar_upload_path,
+        blank=True,
+        null=True,
+        default='avatars/default/default-avatar.png',
+        help_text='用户头像'
+    )
 
     groups = models.ManyToManyField(
-        #  必须重构反向查询名，否则会报错
         Group,
-        related_name="%(app_label)s_%(class)s_set",  # 模型名_模型名_set
+        related_name="%(app_label)s_%(class)s_set",
         blank=True,
         help_text="The groups this user belongs to. A user will get all permissions granted to each of their groups.",
-        # 用户所属的组
         verbose_name="groups",
     )
 
     user_permissions = models.ManyToManyField(
-        #  必须重构反向查询名，否则会报错
         Permission,
-        related_name="%(app_label)s_%(class)s_set",  # 模型名_模型名_set
+        related_name="%(app_label)s_%(class)s_set",
         blank=True,
-        help_text="Specific permissions for this user.",  # 用户的权限
+        help_text="Specific permissions for this user.",
         verbose_name="user permissions",
     )
+
+    class Meta:
+        verbose_name = '用户'
+        verbose_name_plural = '用户'
+
+    def __str__(self):
+        return self.username
+
+    def get_avatar_url(self):
+        """
+        获取头像 URL
+        """
+        if self.avatar and hasattr(self.avatar, 'url'):
+            return self.avatar.url
+        return '/media/avatars/default/default-avatar.png'

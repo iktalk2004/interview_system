@@ -10,13 +10,12 @@
       <el-card class="header-card">
         <div class="user-header">
           <div class="avatar-section">
-            <el-avatar :size="100" :src="user.avatar || ''">
-              {{ user.username?.charAt(0).toUpperCase() }}
-            </el-avatar>
-            <el-button type="primary" size="small" @click="uploadAvatar" class="avatar-btn">
-              <el-icon><Upload /></el-icon>
-              更换头像
-            </el-button>
+            <AvatarUpload
+              :avatar-url="user.avatar_url"
+              :username="user.username"
+              @upload-success="handleAvatarUploadSuccess"
+              @delete-success="handleAvatarDeleteSuccess"
+            />
           </div>
           <div class="user-info">
             <h2 class="username">{{ user.username }}</h2>
@@ -227,7 +226,6 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Loading,
-  Upload,
   Document,
   TrendCharts,
   Clock,
@@ -237,6 +235,7 @@ import {
   Trophy,
   SwitchButton
 } from '@element-plus/icons-vue'
+import AvatarUpload from './common/AvatarUpload.vue'
 import api from '@/api'
 
 const router = useRouter()
@@ -445,8 +444,14 @@ const updateProfile = async () => {
   }
 }
 
-const uploadAvatar = () => {
-  ElMessage.info('头像上传功能开发中...')
+const handleAvatarUploadSuccess = (avatarUrl) => {
+  user.avatar_url = avatarUrl
+  ElMessage.success('头像更新成功')
+}
+
+const handleAvatarDeleteSuccess = () => {
+  user.avatar_url = ''
+  ElMessage.success('头像删除成功')
 }
 
 const confirmLogout = async () => {

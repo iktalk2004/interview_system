@@ -61,9 +61,12 @@
         <template v-if="isAuthenticated">
           <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-dropdown">
-              <div class="user-avatar">
-                <span class="avatar-text">{{ userName?.charAt(0).toUpperCase() }}</span>
-              </div>
+              <UserAvatar
+                :avatar-url="userAvatarUrl"
+                :username="userName"
+                size="medium"
+                :clickable="false"
+              />
               <div class="user-info">
                 <span class="username code-font">{{ userName }}</span>
                 <span class="user-role">{{ isAdmin ? 'admin' : 'user' }}</span>
@@ -111,9 +114,12 @@
         </div>
 
         <div class="mobile-user-info" v-if="isAuthenticated">
-          <div class="user-avatar large">
-            <span class="avatar-text">{{ userName?.charAt(0).toUpperCase() }}</span>
-          </div>
+          <UserAvatar
+            :avatar-url="userAvatarUrl"
+            :username="userName"
+            size="large"
+            :clickable="false"
+          />
           <div class="mobile-user-name code-font">{{ userName }}</div>
           <div class="mobile-user-role">{{ isAdmin ? 'admin' : 'user' }}</div>
         </div>
@@ -204,6 +210,7 @@ import {
   Moon,
   Sunny
 } from '@element-plus/icons-vue'
+import UserAvatar from './common/UserAvatar.vue'
 import api from '@/api'
 
 const router = useRouter()
@@ -215,6 +222,10 @@ const userAvatar = ref('')
 const isAdmin = ref(false)
 const isDarkMode = ref(true)
 
+const userAvatarUrl = computed(() => {
+  return userAvatar.value || '/media/avatars/default/default-avatar.svg'
+})
+
 const checkAuthStatus = () => {
   const token = localStorage.getItem('access_token')
   isAuthenticated.value = !!token
@@ -224,7 +235,7 @@ const checkAuthStatus = () => {
       try {
         const data = JSON.parse(userData)
         userName.value = data.username || ''
-        userAvatar.value = data.avatar || ''
+        userAvatar.value = data.avatar_url || ''
         isAdmin.value = data.is_staff || false
       } catch (e) {
         console.error('解析用户数据失败:', e)

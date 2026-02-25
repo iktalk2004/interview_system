@@ -315,12 +315,12 @@ class CollaborativeFiltering:
     ) -> List[Tuple[Question, float, str]]:
         """
         基于用户的协同过滤推荐
-
+        
         Args:
             user: 目标用户
             n: 推荐题目数量
             min_similarity: 最小相似度阈值
-
+        
         Returns:
             list: 推荐的题目列表 [(question, score, reason), ...]
         """
@@ -333,20 +333,30 @@ class CollaborativeFiltering:
                 is_submitted=True
             ).values_list('question_id', flat=True)
         )
-
+        
+        # 冷启动处理：如果用户答题数少于3个，使用热门题目推荐
+        if len(answered_questions) < 3:
+            logger.info(f"User {user.id} has insufficient data, using popular questions")
+            return CollaborativeFiltering._popular_questions_recommend(user, n, answered_questions)
+        
         # 获取相似用户
         similar_users = UserSimilarity.objects.filter(
             Q(user_a=user) | Q(user_b=user),
             similarity_score__gte=min_similarity
         ).order_by('-similarity_score')
-
+        
+        # 如果没有相似用户，使用热门题目
+        if not similar_users.exists():
+            logger.info(f"No similar users found for user {user.id}, using popular questions")
+            return CollaborativeFiltering._popular_questions_recommend(user, n, answered_questions)
+        
         recommendations = defaultdict(float)
         reasons = defaultdict(list)
-
+        
         for sim in similar_users:
             # 确定相似用户
             similar_user = sim.user_b if sim.user_a == user else sim.user_a
-
+            
             # 获取相似用户的答题记录（只考虑高分题目）
             similar_user_interactions = Interaction.objects.filter(
                 user=similar_user,
@@ -354,33 +364,64 @@ class CollaborativeFiltering:
                 is_submitted=True,
                 score__gte=60
             ).exclude(question_id__in=answered_questions).select_related('question')
-
+            
             for interaction in similar_user_interactions:
                 question_id = interaction.question_id
                 score = interaction.score
-
+                
                 # 计算推荐分数：相似度 * 用户评分
                 rec_score = sim.similarity_score * (score / 100)
-
+                
                 recommendations[question_id] += rec_score
                 reasons[question_id].append(
                     f"相似用户 {similar_user.username} 得分 {score}"
                 )
-
+        
+        # 如果没有推荐结果，使用热门题目
+        if not recommendations:
+            logger.info(f"No recommendations generated for user {user.id}, using popular questions")
+            return CollaborativeFiltering._popular_questions_recommend(user, n, answered_questions)
+        
         # 排序并返回前 n 个推荐
         sorted_recommendations = sorted(
             recommendations.items(),
             key=lambda x: x[1],
             reverse=True
         )[:n]
-
+        
         # 构建推荐结果
         result = []
         for question_id, score in sorted_recommendations:
             question = Question.objects.get(id=question_id)
             reason = "、".join(reasons[question_id])
             result.append((question, score, reason))
-
+        
+        return result
+    
+    @staticmethod
+    def _popular_questions_recommend(
+        user: User,
+        n: int,
+        answered_questions: set
+    ) -> List[Tuple[Question, float, str]]:
+        """
+        热门题目推荐（用于冷启动）
+        """
+        popular_questions = Question.objects.filter(
+            is_approved=True,
+            is_public=True
+        ).exclude(id__in=answered_questions).annotate(
+            answer_count=Count('interactions')
+        ).order_by('-answer_count', '-view_count')[:n]
+        
+        result = []
+        for question in popular_questions:
+            result.append((
+                question,
+                0.5,
+                f"热门题目（{question.answer_count}人已答）"
+            ))
+        
         return result
 
     @staticmethod

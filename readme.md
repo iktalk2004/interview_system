@@ -65,6 +65,8 @@ DATABASES = {
         'PORT': '3306',
     }
 }
+
+CREATE DATABASE interview_system CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 

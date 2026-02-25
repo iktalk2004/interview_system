@@ -1,6 +1,8 @@
 import {createRouter, createWebHistory} from 'vue-router'
 import Register from '@/components/Register.vue';
 import Login from '@/components/Login.vue';
+import RegisterNew from '@/components/RegisterNew.vue';
+import LoginNew from '@/components/LoginNew.vue';
 import Profile from '@/components/Profile.vue';
 import QuestionsList from '@/components/QuestionsList.vue'
 import CategoryManager from '@/components/CategoryManager.vue'
@@ -18,6 +20,8 @@ const routes = [
     {path: '/', redirect: '/recommendations'},
     {path: '/register', component: Register, meta: {requiresAuth: false}, name: 'Register'},
     {path: '/login', component: Login, meta: {requiresAuth: false}, name: 'Login'},
+    {path: '/register-new', component: RegisterNew, meta: {requiresAuth: false}, name: 'RegisterNew'},
+    {path: '/login-new', component: LoginNew, meta: {requiresAuth: false}, name: 'LoginNew'},
     {path: '/profile', component: Profile, meta: {requiresAuth: true}, name: 'Profile'},
     {path: '/questions', component: QuestionsList, meta: {requiresAuth: true}, name: 'QuestionsList'},
     {path: '/categories', component: CategoryManager, meta: {requiresAuth: true}, name: 'CategoryManager'},

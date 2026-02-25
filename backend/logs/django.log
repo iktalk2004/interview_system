@@ -86,3 +86,102 @@ INFO 2026-02-17 17:29:24,061 basehttp 8464 19788 "GET /api/v1/questions/question
 INFO 2026-02-17 17:29:24,089 basehttp 8464 19788 "GET /api/v1/practice/interactions/?question__in=1,2,3,4,5,6,7,8,9,10,11,12 HTTP/1.1" 200 979
 INFO 2026-02-17 17:29:25,131 views 8464 19788 Returning cached recommendations for user 37
 INFO 2026-02-17 17:29:25,132 basehttp 8464 19788 "GET /api/v1/recommender/recommendations/generate_recommendations/?type=hybrid&n=10&min_similarity=0.1 HTTP/1.1" 200 7531
+INFO 2026-02-24 19:31:18,658 autoreload 36036 42728 Watching for file changes with StatReloader
+INFO 2026-02-24 19:31:30,613 SentenceTransformer 36036 42728 Use pytorch device_name: cpu
+INFO 2026-02-24 19:31:30,613 SentenceTransformer 36036 42728 Load pretrained SentenceTransformer: DMetaSoul/sbert-chinese-general-v2
+INFO 2026-02-24 19:31:38,028 factory 36036 42728 Registered scoring strategy: embedding
+INFO 2026-02-24 19:31:38,028 factory 36036 42728 Registered scoring strategy: llm
+INFO 2026-02-24 19:34:11,604 autoreload 43044 47760 Watching for file changes with StatReloader
+INFO 2026-02-24 19:34:17,911 SentenceTransformer 43044 47760 Use pytorch device_name: cpu
+INFO 2026-02-24 19:34:17,912 SentenceTransformer 43044 47760 Load pretrained SentenceTransformer: DMetaSoul/sbert-chinese-general-v2
+INFO 2026-02-24 19:34:23,261 factory 43044 47760 Registered scoring strategy: embedding
+INFO 2026-02-24 19:34:23,262 factory 43044 47760 Registered scoring strategy: llm
+INFO 2026-02-24 19:49:48,590 autoreload 22352 35604 Watching for file changes with StatReloader
+INFO 2026-02-24 19:50:00,542 SentenceTransformer 22352 35604 Use pytorch device_name: cpu
+INFO 2026-02-24 19:50:00,542 SentenceTransformer 22352 35604 Load pretrained SentenceTransformer: DMetaSoul/sbert-chinese-general-v2
+INFO 2026-02-24 19:50:06,228 factory 22352 35604 Registered scoring strategy: embedding
+INFO 2026-02-24 19:50:06,228 factory 22352 35604 Registered scoring strategy: llm
+INFO 2026-02-24 19:50:40,689 basehttp 22352 46348 "OPTIONS /api/v1/users/login/ HTTP/1.1" 200 0
+CRITICAL 2026-02-24 19:50:40,700 exceptions 22352 46348 Unhandled Exception: no such column: users_user.avatar
+Traceback (most recent call last):
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\backends\sqlite3\base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such column: users_user.avatar
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\rest_framework\views.py", line 512, in dispatch
+    response = handler(request, *args, **kwargs)
+  File "E:\04_Interview_system\backend\users\views.py", line 25, in post
+    serializer.is_valid(raise_exception=True)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\rest_framework\serializers.py", line 225, in is_valid
+    self._validated_data = self.run_validation(self.initial_data)
+                           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\rest_framework\serializers.py", line 447, in run_validation
+    value = self.validate(value)
+  File "E:\04_Interview_system\backend\users\serializers.py", line 96, in validate
+    user = authenticate(username=username, password=password)
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\views\decorators\debug.py", line 75, in sensitive_variables_wrapper
+    return func(*func_args, **func_kwargs)
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\contrib\auth\__init__.py", line 114, in authenticate
+    user = backend.authenticate(request, **credentials)
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\contrib\auth\backends.py", line 65, in authenticate
+    user = UserModel._default_manager.get_by_natural_key(username)
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\contrib\auth\base_user.py", line 37, in get_by_natural_key
+    return self.get(**{self.model.USERNAME_FIELD: username})
+           ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\models\query.py", line 631, in get
+    num = len(clone)
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\models\query.py", line 368, in __len__
+    self._fetch_all()
+    ~~~~~~~~~~~~~~~^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\models\query.py", line 1954, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+                         ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\models\query.py", line 93, in __iter__
+    results = compiler.execute_sql(
+        chunked_fetch=self.chunked_fetch, chunk_size=self.chunk_size
+    )
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\models\sql\compiler.py", line 1623, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\backends\utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\backends\utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\backends\utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\backends\utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "E:\03_Env\anaconda3\envs\Django\Lib\site-packages\django\db\backends\sqlite3\base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+django.db.utils.OperationalError: no such column: users_user.avatar
+ERROR 2026-02-24 19:50:40,721 log 22352 46348 Internal Server Error: /api/v1/users/login/
+ERROR 2026-02-24 19:50:40,722 basehttp 22352 46348 "POST /api/v1/users/login/ HTTP/1.1" 500 69
+INFO 2026-02-24 19:52:26,566 SentenceTransformer 35764 47212 Use pytorch device_name: cpu
+INFO 2026-02-24 19:52:26,566 SentenceTransformer 35764 47212 Load pretrained SentenceTransformer: DMetaSoul/sbert-chinese-general-v2
+INFO 2026-02-24 19:52:31,656 factory 35764 47212 Registered scoring strategy: embedding
+INFO 2026-02-24 19:52:31,656 factory 35764 47212 Registered scoring strategy: llm
+INFO 2026-02-24 19:54:14,080 SentenceTransformer 43900 27432 Use pytorch device_name: cpu
+INFO 2026-02-24 19:54:14,081 SentenceTransformer 43900 27432 Load pretrained SentenceTransformer: DMetaSoul/sbert-chinese-general-v2
+INFO 2026-02-24 19:54:18,730 factory 43900 27432 Registered scoring strategy: embedding
+INFO 2026-02-24 19:54:18,730 factory 43900 27432 Registered scoring strategy: llm
